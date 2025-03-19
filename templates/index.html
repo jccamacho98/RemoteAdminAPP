@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>WebAdmin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+        }
+        form {
+            margin: 10px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #fff;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Control de PC01</h1>
+        <form method="get" action="{% url 'install_7zip' %}">
+            <button type="submit">Instalar 7-Zip</button>
+        </form>
+        <form method="get" action="{% url 'uninstall_7zip' %}">
+            <button type="submit">Desinstalar 7-Zip</button>
+        </form>
+        <form method="get" action="{% url 'shutdown_pc01' %}">
+            <button type="submit">Apagar PC01</button>
+        </form>
+        <h2>Resultado:</h2>
+        <pre>{{ output|default:"No hay resultado aún." }}</pre>
+    </div>
+</body>
+</html>
