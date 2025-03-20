@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿{% extends 'base.html' %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<!DOCTYPE html>
 <html>
 <head>
     <title>WebAdmin</title>
@@ -61,4 +64,7 @@
         <pre>{{ output|default:"No hay resultado aún." }}</pre>
     </div>
 </body>
-</html>
+</html>   
+{% endblock %}
+
+

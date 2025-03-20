@@ -50,3 +50,12 @@ def shutdown_pc01(request):
         output = run_powershell_script(script_path)
         return render(request, 'index.html', {'output': output})
     return render(request, 'index.html', {'output': "Error: Script no encontrado en D:\ScriptsPS\ApagarPC.ps1"})
+
+def monitor(request):
+    return render(request, 'monitor.html')
+
+def software(request):
+    return render(request, 'software.html')
+
+def control(request):
+    return render(request, 'control.html')
