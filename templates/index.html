@@ -1,0 +1,73 @@
+﻿{% extends 'base.html' %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+    <div class="container">
+        <h1>PCs Sala 331</h1>
+
+        <!-- Cuadrícula de 20 PCs en 4 columnas -->
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <!-- Columna 1 (PC01-PC05) -->
+            <div style="width: 22%;">
+                {% for pc in col1_pcs %}
+                    <div style="display: flex; align-items: center; margin: 10px 0;">
+                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                        <div>
+                            <h3 style="margin: 0; color: #333;">{{ pc.name }}</h3>
+                            <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% elif pc.status == 'Fuera de línea' %}red{% else %}gray{% endif %};">{{ pc.status }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <!-- Columna 2 (PC06-PC10) -->
+            <div style="width: 22%;margin-right: 100px;">
+                {% for pc in col2_pcs %}
+                    <div style="display: flex; align-items: center; margin: 10px 0;">
+                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                        <div>
+                            <h3 style="margin: 0; color: #333;">{{ pc.name }}</h3>
+                            <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% elif pc.status == 'Fuera de línea' %}red{% else %}gray{% endif %};">{{ pc.status }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <!-- Columna 3 (PC11-PC15) -->
+            <div style="width: 22%;">
+                {% for pc in col3_pcs %}
+                    <div style="display: flex; align-items: center; margin: 10px 0;">
+                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                        <div>
+                            <h3 style="margin: 0; color: #333;">{{ pc.name }}</h3>
+                            <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% elif pc.status == 'Fuera de línea' %}red{% else %}gray{% endif %};">{{ pc.status }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <!-- Columna 4 (PC16-PC20) -->
+            <div style="width: 22%;">
+                {% for pc in col4_pcs %}
+                    <div style="display: flex; align-items: center; margin: 10px 0;">
+                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                        <div>
+                            <h3 style="margin: 0; color: #333;">{{ pc.name }}</h3>
+                            <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% elif pc.status == 'Fuera de línea' %}red{% else %}gray{% endif %};">{{ pc.status }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Botones y resultado -->
+        <h2>Acciones Rápidas para PC01</h2>
+        <form method="get" action="{% url 'install_7zip' %}">
+            <button type="submit">Instalar 7-Zip</button>
+        </form>
+        <form method="get" action="{% url 'uninstall_7zip' %}">
+            <button type="submit">Desinstalar 7-Zip</button>
+        </form>
+        <form method="get" action="{% url 'shutdown_pc01' %}">
+            <button type="submit">Apagar PC01</button>
+        </form>
+        <h2>Resultado:</h2>
+        <pre>{{ output|default:"No hay resultado aún." }}</pre>
+    </div>
+{% endblock %}

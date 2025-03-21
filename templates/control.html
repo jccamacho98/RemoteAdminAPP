@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Control{% endblock %}
+{% block content %}
+    <div class="container">
+        <h1>Control de PCs</h1>
+
+        <!-- Formulario con selector de PCs -->
+        <h2>Seleccione uno o más PCs</h2>
+        <form method="get">
+            <label for="selected_pcs">Seleccione los PCs:</label>
+            <select name="selected_pcs" id="selected_pcs" multiple size="5">
+                {% for i in "1"|ljust:"20" %}
+                    <option value="PC{{ forloop.counter|stringformat:'02d' }}">PC{{ forloop.counter|stringformat:'02d' }}</option>
+                {% endfor %}
+            </select>
+            <p><small>Mantén presionada la tecla Ctrl (o Cmd en Mac) para seleccionar múltiples PCs.</small></p>
+
+            <!-- Botones -->
+            <h2>Acciones</h2>
+            <button type="submit" formaction="{% url 'shutdown_pc01' %}">Apagar</button>
+            <button type="submit" formaction="{% url 'restart_pc01' %}">Reiniciar</button>
+            <button type="submit" formaction="{% url 'remote_desktop_pc01' %}">Escritorio Remoto</button>
+        </form>
+
+        <!-- Resultado -->
+        <h2>Resultado:</h2>
+        {% if output %}
+            <pre>{{ output }}</pre>
+        {% else %}
+            <pre>No hay resultado aún.</pre>
+        {% endif %}
+    </div>
+{% endblock %}

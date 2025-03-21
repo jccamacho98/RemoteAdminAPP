@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Monitoreo{% endblock %}
+{% block content %}
+<h1>PCs del Dominio SERVER331NB.local</h1>
+<div style="display: flex; justify-content: space-between;">
+    <!-- Columna izquierda (PC01-PC10) -->
+    <div style="width: 45%;">
+        {% for pc in left_pcs %}
+            <div style="display: flex; align-items: center; margin: 10px 0;">
+                <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                <div>
+                    <h3 style="margin: 0;">{{ pc.name }}</h3>
+                    <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% else %}red{% endif %};">{{ pc.status }}</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    <!-- Columna derecha (PC11-PC20) -->
+    <div style="width: 45%;">
+        {% for pc in right_pcs %}
+            <div style="display: flex; align-items: center; margin: 10px 0;">
+                <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                <div>
+                    <h3 style="margin: 0;">{{ pc.name }}</h3>
+                    <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% else %}red{% endif %};">{{ pc.status }}</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

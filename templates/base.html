@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Remota - {% block title %}{% endblock %}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        nav { background-color: #333; padding: 10px; position: fixed; top: 0; width: 100%; }
+        nav a { color: white; margin: 0 15px; text-decoration: none; }
+        nav a:hover { color: #4CAF50; }
+        .container { max-width: 800px; margin: 60px auto 20px; padding: 20px; }
+        button { background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        pre { background-color: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        form { margin: 10px 0; }
+        input[type="text"] { padding: 5px; width: 300px; }
+        label { display: block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'index' %}">Inicio</a>
+        <a href="{% url 'monitor' %}">Monitoreo</a>
+        <a href="{% url 'software' %}">Software</a>
+        <a href="{% url 'control' %}">Control</a>
+    </nav>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
