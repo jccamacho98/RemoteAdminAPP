@@ -2,11 +2,13 @@ from django.shortcuts import render
 import winrm
 import os
 from requests.exceptions import Timeout
+from scripts.models import Info_PCs
+from django.utils import timezone
 
 def run_powershell_script(script_path, args=""):
     try:
         session = winrm.Session(
-            'http://192.168.128.31:5985/wsman',  # IP de Server331
+            'http://192.168.128.31:5985/wsman',
             auth=('SERVER331NB\\Administrator', 'Sala331server'),
             transport='ntlm',
             operation_timeout_sec=5,
@@ -33,7 +35,7 @@ def run_powershell_script(script_path, args=""):
 def run_powershell_command(command):
     try:
         session = winrm.Session(
-            'http://192.168.128.31:5985/wsman',  # IP de Server331
+            'http://192.168.128.31:5985/wsman',
             auth=('SERVER331NB\\Administrator', 'Sala331server'),
             transport='ntlm',
             operation_timeout_sec=5,
@@ -56,18 +58,53 @@ def run_powershell_command(command):
     except Exception as e:
         return f"Error al ejecutar el comando: {str(e)}"
 
-def index(request):
-    pcs = [{'name': 'PC01', 'status': 'En línea'}]
-    all_pcs = [{'name': f'PC{i:02d}', 'status': 'No unido al dominio'} for i in range(1, 21)]
+def update_pc_info():
+    script_path = r"C:\WebAdminDev\ScriptsPS\GetPCInfo.ps1"
+    pcs = Info_PCs.objects.all().order_by('nombre')
+    output = []
     for pc in pcs:
-        index = int(pc['name'].replace('PC', '')) - 1
-        all_pcs[index] = pc
+        result = run_powershell_script(script_path, args=pc.nombre)
+        output.append(f"Resultado para {pc.nombre}:\n{result}\n")
+        
+        # Parsear la salida del script
+        status = "Offline"
+        ip = None
+        mac = None
+        os = None
+        domain_joined = False
+        
+        for line in result.splitlines():
+            if line.startswith("Status:"):
+                status = line.split("Status: ")[1].strip()
+            elif line.startswith("IP:"):
+                ip = line.split("IP: ")[1].strip()
+            elif line.startswith("MAC:"):
+                mac = line.split("MAC: ")[1].strip()
+            elif line.startswith("OS:"):
+                os = line.split("OS: ")[1].strip()
+            elif line.startswith("DomainJoined:"):
+                domain_joined = line.split("DomainJoined: ")[1].strip().lower() == "true"
+            elif line.startswith("Error:"):
+                output.append(f"Error al obtener información de {pc.nombre}: {line}")
+                continue
+        
+        # Actualizar el registro existente
+        pc.estado = status
+        pc.ip = ip
+        pc.mac_address = mac
+        pc.sistema_operativo = os
+        pc.domain_joined = domain_joined
+        pc.last_seen = timezone.now()
+        pc.save()
+    
+    return "\n".join(output)
 
-    col1_pcs = all_pcs[0:5]
-    col2_pcs = all_pcs[5:10]
-    col3_pcs = all_pcs[10:15]
-    col4_pcs = all_pcs[15:20]
-
+def index(request):
+    pcs = Info_PCs.objects.all().order_by('nombre')
+    col1_pcs = pcs[0:5]
+    col2_pcs = pcs[5:10]
+    col3_pcs = pcs[10:15]
+    col4_pcs = pcs[15:20]
     return render(request, 'index.html', {
         'col1_pcs': col1_pcs,
         'col2_pcs': col2_pcs,
@@ -79,15 +116,11 @@ def index(request):
 def install_7zip(request):
     script_path = r"C:\WebAdminDev\ScriptsPS\PruebaInstalarSoftware.ps1"
     output = run_powershell_script(script_path)
-    pcs = [{'name': 'PC01', 'status': 'En línea'}]
-    all_pcs = [{'name': f'PC{i:02d}', 'status': 'No unido al dominio'} for i in range(1, 21)]
-    for pc in pcs:
-        index = int(pc['name'].replace('PC', '')) - 1
-        all_pcs[index] = pc
-    col1_pcs = all_pcs[0:5]
-    col2_pcs = all_pcs[5:10]
-    col3_pcs = all_pcs[10:15]
-    col4_pcs = all_pcs[15:20]
+    pcs = Info_PCs.objects.all().order_by('nombre')
+    col1_pcs = pcs[0:5]
+    col2_pcs = pcs[5:10]
+    col3_pcs = pcs[10:15]
+    col4_pcs = pcs[15:20]
     return render(request, 'index.html', {
         'col1_pcs': col1_pcs,
         'col2_pcs': col2_pcs,
@@ -99,15 +132,11 @@ def install_7zip(request):
 def uninstall_7zip(request):
     script_path = r"C:\WebAdminDev\ScriptsPS\PruebaDesinstalarSoftware.ps1"
     output = run_powershell_script(script_path)
-    pcs = [{'name': 'PC01', 'status': 'En línea'}]
-    all_pcs = [{'name': f'PC{i:02d}', 'status': 'No unido al dominio'} for i in range(1, 21)]
-    for pc in pcs:
-        index = int(pc['name'].replace('PC', '')) - 1
-        all_pcs[index] = pc
-    col1_pcs = all_pcs[0:5]
-    col2_pcs = all_pcs[5:10]
-    col3_pcs = all_pcs[10:15]
-    col4_pcs = all_pcs[15:20]
+    pcs = Info_PCs.objects.all().order_by('nombre')
+    col1_pcs = pcs[0:5]
+    col2_pcs = pcs[5:10]
+    col3_pcs = pcs[10:15]
+    col4_pcs = pcs[15:20]
     return render(request, 'index.html', {
         'col1_pcs': col1_pcs,
         'col2_pcs': col2_pcs,
@@ -117,55 +146,67 @@ def uninstall_7zip(request):
     })
 
 def shutdown_pc01(request):
-    selected_pcs = request.GET.getlist('selected_pcs')  # Obtener lista de PCs seleccionados
+    selected_pcs = request.GET.getlist('selected_pcs')
     if not selected_pcs:
         return render(request, 'control.html', {'output': "Error: Por favor, seleccione al menos un PC antes de realizar esta acción."})
     
     output = []
     script_path = r"C:\WebAdminDev\ScriptsPS\ApagarPC.ps1"
-    for pc in selected_pcs:
-        result = run_powershell_script(script_path, args=pc)
-        output.append(f"Resultado para {pc}:\n{result}\n")
+    for pc_name in selected_pcs:
+        result = run_powershell_script(script_path, args=pc_name)
+        output.append(f"Resultado para {pc_name}:\n{result}\n")
+        pc = Info_PCs.objects.get(nombre=pc_name)
+        pc.estado = "Offline" if "Éxito" in result else "Offline"
+        pc.last_seen = timezone.now()
+        pc.save()
     return render(request, 'control.html', {'output': "\n".join(output)})
 
 def restart_pc01(request):
-    selected_pcs = request.GET.getlist('selected_pcs')  # Obtener lista de PCs seleccionados
+    selected_pcs = request.GET.getlist('selected_pcs')
     if not selected_pcs:
         return render(request, 'control.html', {'output': "Error: Por favor, seleccione al menos un PC antes de realizar esta acción."})
     
     output = []
     script_path = r"C:\WebAdminDev\ScriptsPS\ReiniciarPC.ps1"
-    for pc in selected_pcs:
-        result = run_powershell_script(script_path, args=pc)
-        output.append(f"Resultado para {pc}:\n{result}\n")
+    for pc_name in selected_pcs:
+        result = run_powershell_script(script_path, args=pc_name)
+        output.append(f"Resultado para {pc_name}:\n{result}\n")
+        pc = Info_PCs.objects.get(nombre=pc_name)
+        pc.estado = "Online" if "Éxito" in result else "Offline"
+        pc.last_seen = timezone.now()
+        pc.save()
     return render(request, 'control.html', {'output': "\n".join(output)})
 
 def remote_desktop_pc01(request):
-    selected_pcs = request.GET.getlist('selected_pcs')  # Obtener lista de PCs seleccionados
+    selected_pcs = request.GET.getlist('selected_pcs')
     if not selected_pcs:
         return render(request, 'control.html', {'output': "Error: Por favor, seleccione al menos un PC antes de realizar esta acción."})
     
-    # Aviso si se seleccionan múltiples PCs para Escritorio Remoto
     if len(selected_pcs) > 1:
         return render(request, 'control.html', {'output': "Aviso: No se pueden iniciar sesiones de Escritorio Remoto para múltiples PCs al mismo tiempo. Por favor, seleccione solo un PC."})
     
-    # Si solo se seleccionó un PC, proceder con Escritorio Remoto
-    pc = selected_pcs[0]
-    rdp_path = f"C:\\WebAdminDev\\ScriptsPS\\{pc}.rdp"
+    pc_name = selected_pcs[0]
+    rdp_path = f"C:\\WebAdminDev\\ScriptsPS\\{pc_name}.rdp"
     if os.path.exists(rdp_path):
-        # Modificar el script OpenRDP.ps1 para usar el PC seleccionado
         with open(r"C:\WebAdminDev\ScriptsPS\OpenRDP.ps1", "w") as f:
-            f.write(f'Start-Process "C:\\WebAdminDev\\ScriptsPS\\{pc}.rdp"')
-        # Ejecutar la tarea programada OpenRDP
+            f.write(f'Start-Process "C:\\WebAdminDev\\ScriptsPS\\{pc_name}.rdp"')
         output = run_powershell_command('schtasks /Run /TN "OpenRDP"')
         if "Error" in output:
             return render(request, 'control.html', {'output': f"Error al ejecutar la tarea programada: {output}"})
-        return render(request, 'control.html', {'output': f"Se ha iniciado la conexión de Escritorio Remoto a {pc}."})
+        pc = Info_PCs.objects.get(nombre=pc_name)
+        pc.last_seen = timezone.now()
+        pc.save()
+        return render(request, 'control.html', {'output': f"Se ha iniciado la conexión de Escritorio Remoto a {pc_name}."})
     else:
-        return render(request, 'control.html', {'output': f"Error: El archivo {pc}.rdp no existe en C:\WebAdminDev\ScriptsPS."})
+        return render(request, 'control.html', {'output': f"Error: El archivo {pc_name}.rdp no existe en C:\WebAdminDev\ScriptsPS."})
 
 def monitor(request):
-    return render(request, 'monitor.html')
+    pcs = Info_PCs.objects.all().order_by('nombre')
+    output = None
+    if request.method == "POST" and 'update_info' in request.POST:
+        output = update_pc_info()
+        pcs = Info_PCs.objects.all().order_by('nombre')  # Refrescar los datos después de actualizar
+    return render(request, 'monitor.html', {'pcs': pcs, 'output': output})
 
 def software(request):
     return render(request, 'software.html')

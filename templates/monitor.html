@@ -1,31 +1,47 @@
 {% extends 'base.html' %}
-{% block title %}Monitoreo{% endblock %}
+{% block title %}Monitor{% endblock %}
 {% block content %}
-<h1>PCs del Dominio SERVER331NB.local</h1>
-<div style="display: flex; justify-content: space-between;">
-    <!-- Columna izquierda (PC01-PC10) -->
-    <div style="width: 45%;">
-        {% for pc in left_pcs %}
-            <div style="display: flex; align-items: center; margin: 10px 0;">
-                <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
-                <div>
-                    <h3 style="margin: 0;">{{ pc.name }}</h3>
-                    <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% else %}red{% endif %};">{{ pc.status }}</p>
-                </div>
-            </div>
-        {% endfor %}
+    <div class="container">
+        <h1>Monitor de PCs</h1>
+
+        <!-- Botón para actualizar información -->
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" name="update_info">Actualizar información</button>
+        </form>
+
+        <!-- Tabla con la información de los PCs -->
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>IP</th>
+                    <th>MAC</th>
+                    <th>Sistema Operativo</th>
+                    <th>Estado</th>
+                    <th>Unido al Dominio</th>
+                    <th>Última vez visto</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pc in pcs %}
+                    <tr>
+                        <td>{{ pc.nombre }}</td>
+                        <td>{{ pc.ip|default:"No disponible" }}</td>
+                        <td>{{ pc.mac_address|default:"No disponible" }}</td>
+                        <td>{{ pc.sistema_operativo|default:"No disponible" }}</td>
+                        <td>{{ pc.estado }}</td>
+                        <td>{{ pc.domain_joined|yesno:"Sí,No" }}</td>
+                        <td>{{ pc.last_seen|default:"Nunca" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Resultado de la actualización -->
+        {% if output %}
+            <h2>Resultado de la actualización:</h2>
+            <pre>{{ output }}</pre>
+        {% endif %}
     </div>
-    <!-- Columna derecha (PC11-PC20) -->
-    <div style="width: 45%;">
-        {% for pc in right_pcs %}
-            <div style="display: flex; align-items: center; margin: 10px 0;">
-                <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
-                <div>
-                    <h3 style="margin: 0;">{{ pc.name }}</h3>
-                    <p style="margin: 0; color: {% if pc.status == 'En línea' %}green{% else %}red{% endif %};">{{ pc.status }}</p>
-                </div>
-            </div>
-        {% endfor %}
-    </div>
-</div>
 {% endblock %}

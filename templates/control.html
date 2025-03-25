@@ -4,16 +4,21 @@
     <div class="container">
         <h1>Control de PCs</h1>
 
-        <!-- Formulario con selector de PCs -->
+        <!-- Formulario con checkboxes para PCs -->
         <h2>Seleccione uno o más PCs</h2>
         <form method="get">
-            <label for="selected_pcs">Seleccione los PCs:</label>
-            <select name="selected_pcs" id="selected_pcs" multiple size="5">
+            <div class="select-all-item">
+                <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
+                <label for="select_all">Seleccionar todos</label>
+            </div>
+            <div class="pc-selector" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
                 {% for i in "1"|ljust:"20" %}
-                    <option value="PC{{ forloop.counter|stringformat:'02d' }}">PC{{ forloop.counter|stringformat:'02d' }}</option>
+                    <div class="pc-item">
+                        <input type="checkbox" name="selected_pcs" value="PC{{ forloop.counter|stringformat:'02d' }}" id="pc{{ forloop.counter|stringformat:'02d' }}" class="pc-checkbox">
+                        <label for="pc{{ forloop.counter|stringformat:'02d' }}">PC{{ forloop.counter|stringformat:'02d' }}</label>
+                    </div>
                 {% endfor %}
-            </select>
-            <p><small>Mantén presionada la tecla Ctrl (o Cmd en Mac) para seleccionar múltiples PCs.</small></p>
+            </div>
 
             <!-- Botones -->
             <h2>Acciones</h2>
@@ -30,4 +35,50 @@
             <pre>No hay resultado aún.</pre>
         {% endif %}
     </div>
+
+    <!-- Script para "Seleccionar todos" -->
+    <script>
+        function toggleSelectAll() {
+            var selectAllCheckbox = document.getElementById('select_all');
+            var pcCheckboxes = document.getElementsByClassName('pc-checkbox');
+            for (var i = 0; i < pcCheckboxes.length; i++) {
+                pcCheckboxes[i].checked = selectAllCheckbox.checked;
+            }
+        }
+    </script>
+
+    <!-- Estilos CSS -->
+    <style>
+        .pc-selector {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            width: 300px; /* Ancho del selector */
+            position: relative; /* Posición relativa para ajustes */
+            left: 0px; /* Posición horizontal */
+            top: 0px; /* Posición vertical */
+        }
+
+        .pc-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .pc-item input[type="checkbox"] {
+            margin-right: 8px; /* Espacio entre el checkbox y el nombre del PC */
+        }
+
+        .select-all-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px; /* Espacio entre "Seleccionar todos" y la lista de PCs */
+        }
+
+        .select-all-item input[type="checkbox"] {
+            margin-right: 8px; /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
+        }
+    </style>
 {% endblock %}
