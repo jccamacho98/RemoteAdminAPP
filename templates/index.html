@@ -56,18 +56,5 @@
             </div>
         </div>
 
-        <!-- Botones y resultado -->
-        <h2>Acciones Rápidas para PC01</h2>
-        <form method="get" action="{% url 'install_7zip' %}">
-            <button type="submit">Instalar 7-Zip</button>
-        </form>
-        <form method="get" action="{% url 'uninstall_7zip' %}">
-            <button type="submit">Desinstalar 7-Zip</button>
-        </form>
-        <form method="get" action="{% url 'shutdown_pc01' %}">
-            <button type="submit">Apagar PC01</button>
-        </form>
-        <h2>Resultado:</h2>
-        <pre>{{ output|default:"No hay resultado aún." }}</pre>
     </div>
 {% endblock %}

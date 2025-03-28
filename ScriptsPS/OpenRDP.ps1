@@ -1,1 +1,1 @@
-Start-Process "C:\WebAdminDev\ScriptsPS\PC02.rdp"
+Start-Process "C:\WebAdminDev\ScriptsPS\PC01.rdp"
