@@ -1,13 +1,21 @@
 import winrm
 from requests.exceptions import Timeout
-from scripts.models import Info_PCs
+from monitor.models import Info_PCs
 from django.utils import timezone
+import os
+from django.conf import settings  # Importar settings para obtener BASE_DIR
 
 def run_powershell_script(script_path, args=""):
     try:
+        # Leer credenciales desde variables de entorno
+        username = os.getenv('WINRM_USERNAME')
+        password = os.getenv('WINRM_PASSWORD')
+        if not username or not password:
+            return "Error: Las variables de entorno WINRM_USERNAME y WINRM_PASSWORD deben estar definidas."
+
         session = winrm.Session(
             'http://192.168.128.31:5985/wsman',
-            auth=('SERVER331NB\\Administrator', 'Sala331server'),
+            auth=(username, password),
             transport='ntlm',
             operation_timeout_sec=5,
             read_timeout_sec=10
@@ -32,9 +40,15 @@ def run_powershell_script(script_path, args=""):
 
 def run_powershell_command(command):
     try:
+        # Leer credenciales desde variables de entorno
+        username = os.getenv('WINRM_USERNAME')
+        password = os.getenv('WINRM_PASSWORD')
+        if not username or not password:
+            return "Error: Las variables de entorno WINRM_USERNAME y WINRM_PASSWORD deben estar definidas."
+
         session = winrm.Session(
             'http://192.168.128.31:5985/wsman',
-            auth=('SERVER331NB\\Administrator', 'Sala331server'),
+            auth=(username, password),
             transport='ntlm',
             operation_timeout_sec=5,
             read_timeout_sec=10
@@ -75,11 +89,14 @@ def update_pc_status():
         pc.save()
 
 def update_pc_info():
-    script_path = r"C:\WebAdminDev\ScriptsPS\GetPCInfo.ps1"
+    # Usar settings.BASE_DIR para obtener el directorio raíz del proyecto
+    project_root = settings.BASE_DIR
+    script_path = os.path.join(project_root, 'ScriptsPS', 'GetPCInfo.ps1')
+    
     pcs = Info_PCs.objects.all().order_by('nombre')
     output = []
     for pc in pcs:
-        result = run_powershell_script(script_path, args=pc.nombre)
+        result = run_powershell_script(script_path, args=f'"{pc.nombre}"')
         output.append(f"Resultado para {pc.nombre}:\n{result}\n")
         
         # Parsear la salida del script
@@ -94,10 +111,16 @@ def update_pc_info():
                 status = line.split("Status: ")[1].strip()
             elif line.startswith("IP:"):
                 ip = line.split("IP: ")[1].strip()
+                if ip == "N/A":
+                    ip = None
             elif line.startswith("MAC:"):
                 mac = line.split("MAC: ")[1].strip()
+                if mac == "N/A":
+                    mac = None
             elif line.startswith("OS:"):
                 os = line.split("OS: ")[1].strip()
+                if os == "N/A":
+                    os = None
             elif line.startswith("DomainJoined:"):
                 domain_joined = line.split("DomainJoined: ")[1].strip().lower() == "true"
             elif line.startswith("Error:"):

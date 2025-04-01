@@ -43,5 +43,67 @@
             <h2>Resultado de la actualización:</h2>
             <pre>{{ output }}</pre>
         {% endif %}
+
+        <!-- Formulario para listar y actualizar software -->
+        <h2>Software Instalado</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div style="margin-bottom: 15px;">
+                <label for="selected_pc">Seleccionar PC:</label><br>
+                <select name="selected_pc" id="selected_pc" required>
+                    <option value="">-- Seleccionar PC --</option>
+                    {% for pc in pcs %}
+                        <option value="{{ pc.nombre }}" {% if pc.nombre == selected_pc %}selected{% endif %}>
+                            {{ pc.nombre }} ({{ pc.estado }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" name="list_software">Listar Software</button>
+            <button type="submit" name="update_software">Actualizar Información</button>
+        </form>
+
+        <!-- Mostrar lista de software -->
+        {% if software_list %}
+            <h2>Software Instalado en {{ selected_pc }}:</h2>
+            {% if software_list.count > 0 %}
+                <table border="1">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Versión</th>
+                            <th>Publicador</th>
+                            <th>Fecha de Instalación</th>
+                            <th>Última Actualización</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for software in software_list %}
+                            <tr>
+                                <td>{{ software.display_name|default:"No disponible" }}</td>
+                                <td>{{ software.display_version|default:"No disponible" }}</td>
+                                <td>{{ software.publisher|default:"No disponible" }}</td>
+                                <td>{{ software.install_date|default:"No disponible" }}</td>
+                                <td>{{ software.last_updated|default:"No disponible" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No hay software registrado para {{ selected_pc }}. Haz clic en "Actualizar Información" para obtener la lista de software.</p>
+            {% endif %}
+        {% endif %}
+
+        <!-- Mostrar mensaje de actualización -->
+        {% if software_message %}
+            <h2>Mensaje:</h2>
+            <p>{{ software_message }}</p>
+        {% endif %}
+
+        <!-- Mostrar errores si los hay -->
+        {% if software_error %}
+            <h2>Error:</h2>
+            <pre>{{ software_error }}</pre>
+        {% endif %}
     </div>
 {% endblock %}

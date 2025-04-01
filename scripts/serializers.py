@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from scripts.models import Info_PCs
+from monitor.models import Info_PCs
 
 class InfoPCSerializer(serializers.ModelSerializer):
     class Meta:

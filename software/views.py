@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from scripts.models import Info_PCs
+from monitor.models import Info_PCs
 from scripts.utils import run_powershell_script, run_powershell_command
 import os
 import uuid
