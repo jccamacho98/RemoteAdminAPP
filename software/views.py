@@ -1,11 +1,13 @@
 from django.shortcuts import render
-from scripts.models import Info_PCs
+from monitor.models import Info_PCs
 from scripts.utils import run_powershell_script, run_powershell_command
 import os
 import uuid
+from django.conf import settings  # Importar settings para usar BASE_DIR
 
 def software(request):
-    pcs = Info_PCs.objects.all().order_by('nombre')
+    # Obtener solo los PCs que están Online
+    online_pcs = Info_PCs.objects.filter(estado="Online").order_by('nombre')
     output = None
     show_rdp_prompt = False
     rdp_pc_name = None
@@ -16,7 +18,7 @@ def software(request):
         selected_pcs = request.POST.getlist('selected_pcs')
         if not selected_pcs:
             return render(request, 'software/software.html', {
-                'pcs': pcs,
+                'online_pcs': online_pcs,
                 'output': "Error: Por favor, seleccione al menos un PC antes de realizar esta acción."
             })
 
@@ -27,21 +29,21 @@ def software(request):
         # Validar que solo se seleccione un PC en modo interactivo
         if not unattended and len(selected_pcs) > 1:
             return render(request, 'software/software.html', {
-                'pcs': pcs,
+                'online_pcs': online_pcs,
                 'output': "Error: La instalación interactiva solo permite seleccionar un PC a la vez."
             })
 
         # Obtener el archivo del instalador
         if 'installer_file' not in request.FILES:
             return render(request, 'software/software.html', {
-                'pcs': pcs,
+                'online_pcs': online_pcs,
                 'output': "Error: Por favor, seleccione un archivo instalador."
             })
 
         installer_file = request.FILES['installer_file']
         # Generar un nombre único para el archivo temporal
         temp_filename = f"{uuid.uuid4()}_{installer_file.name}"
-        temp_installer_path = os.path.join(r"C:\WebAdminDev\ScriptsPS\temp", temp_filename)
+        temp_installer_path = os.path.join(settings.BASE_DIR, 'ScriptsPS', 'temp', temp_filename)
 
         # Crear el directorio temporal si no existe
         os.makedirs(os.path.dirname(temp_installer_path), exist_ok=True)
@@ -53,7 +55,7 @@ def software(request):
                     f.write(chunk)
         except Exception as e:
             return render(request, 'software/software.html', {
-                'pcs': pcs,
+                'online_pcs': online_pcs,
                 'output': f"Error al guardar el archivo instalador: {str(e)}"
             })
 
@@ -61,7 +63,7 @@ def software(request):
         remote_destination = f"C:\\Software\\{installer_file.name}"
 
         # Ejecutar el script para cada PC seleccionado
-        script_path = r"C:\WebAdminDev\ScriptsPS\PruebaInstalarSoftware.ps1"
+        script_path = os.path.join(settings.BASE_DIR, 'ScriptsPS', 'PruebaInstalarSoftware.ps1')
         output = []
         for pc_name in selected_pcs:
             # Construir los argumentos para el script
@@ -89,10 +91,11 @@ def software(request):
     if request.method == "POST" and 'start_rdp' in request.POST:
         pc_name = request.POST.get('pc_name')
         if pc_name:
-            rdp_path = f"C:\\WebAdminDev\\ScriptsPS\\{pc_name}.rdp"
+            rdp_path = os.path.join(settings.BASE_DIR, 'ScriptsPS', f'{pc_name}.rdp')
             if os.path.exists(rdp_path):
-                with open(r"C:\WebAdminDev\ScriptsPS\OpenRDP.ps1", "w") as f:
-                    f.write(f'Start-Process "C:\\WebAdminDev\\ScriptsPS\\{pc_name}.rdp"')
+                script_path = os.path.join(settings.BASE_DIR, 'ScriptsPS', 'OpenRDP.ps1')
+                with open(script_path, "w") as f:
+                    f.write(f'Start-Process "{rdp_path}"')
                 result = run_powershell_command('schtasks /Run /TN "OpenRDP"')
                 if "Error" in result:
                     output = f"Error al ejecutar la tarea programada para iniciar RDP: {result}"
@@ -102,7 +105,7 @@ def software(request):
                 output = f"Error: El archivo {pc_name}.rdp no existe en C:\WebAdminDev\ScriptsPS."
 
     return render(request, 'software/software.html', {
-        'pcs': pcs,
+        'online_pcs': online_pcs,
         'output': output,
         'show_rdp_prompt': show_rdp_prompt,
         'rdp_pc_name': rdp_pc_name,

@@ -1,6 +1,6 @@
 from celery import shared_task
 from celery.schedules import crontab
-from scripts.models import Info_PCs
+from monitor.models import Info_PCs
 from django.utils import timezone
 import winrm
 from requests.exceptions import Timeout

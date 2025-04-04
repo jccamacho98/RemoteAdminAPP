@@ -1,13 +1,21 @@
 import winrm
 from requests.exceptions import Timeout
-from scripts.models import Info_PCs
+from monitor.models import Info_PCs
 from django.utils import timezone
+import os
+from django.conf import settings  # Importar settings para obtener BASE_DIR
 
 def run_powershell_script(script_path, args=""):
     try:
+        # Leer credenciales desde variables de entorno
+        username = os.getenv('WINRM_USERNAME')
+        password = os.getenv('WINRM_PASSWORD')
+        if not username or not password:
+            return "Error: Las variables de entorno WINRM_USERNAME y WINRM_PASSWORD deben estar definidas."
+
         session = winrm.Session(
             'http://192.168.128.31:5985/wsman',
-            auth=('SERVER331NB\\Administrator', 'Sala331server'),
+            auth=(username, password),
             transport='ntlm',
             operation_timeout_sec=5,
             read_timeout_sec=10
@@ -32,9 +40,15 @@ def run_powershell_script(script_path, args=""):
 
 def run_powershell_command(command):
     try:
+        # Leer credenciales desde variables de entorno
+        username = os.getenv('WINRM_USERNAME')
+        password = os.getenv('WINRM_PASSWORD')
+        if not username or not password:
+            return "Error: Las variables de entorno WINRM_USERNAME y WINRM_PASSWORD deben estar definidas."
+
         session = winrm.Session(
             'http://192.168.128.31:5985/wsman',
-            auth=('SERVER331NB\\Administrator', 'Sala331server'),
+            auth=(username, password),
             transport='ntlm',
             operation_timeout_sec=5,
             read_timeout_sec=10
@@ -75,20 +89,29 @@ def update_pc_status():
         pc.save()
 
 def update_pc_info():
-    script_path = r"C:\WebAdminDev\ScriptsPS\GetPCInfo.ps1"
+    # Usar settings.BASE_DIR para obtener el directorio raíz del proyecto
+    project_root = settings.BASE_DIR
+    script_path = os.path.join(project_root, 'ScriptsPS', 'GetPCInfo.ps1')
+    
+    # Verificar que el script exista
+    if not os.path.exists(script_path):
+        error_msg = f"Error: El script {script_path} no existe."
+        return error_msg
+    
     pcs = Info_PCs.objects.all().order_by('nombre')
     output = []
     for pc in pcs:
-        result = run_powershell_script(script_path, args=pc.nombre)
+        result = run_powershell_script(script_path, args=f'"{pc.nombre}"')
         output.append(f"Resultado para {pc.nombre}:\n{result}\n")
         
         # Parsear la salida del script
         status = "Offline"
-        ip = None
-        mac = None
-        os = None
+        ip = "N/A"
+        mac = "N/A"
+        os_value = "N/A"
         domain_joined = False
         
+        # Parsear cada línea de la salida
         for line in result.splitlines():
             if line.startswith("Status:"):
                 status = line.split("Status: ")[1].strip()
@@ -97,20 +120,23 @@ def update_pc_info():
             elif line.startswith("MAC:"):
                 mac = line.split("MAC: ")[1].strip()
             elif line.startswith("OS:"):
-                os = line.split("OS: ")[1].strip()
+                os_value = line.split("OS: ")[1].strip()
             elif line.startswith("DomainJoined:"):
                 domain_joined = line.split("DomainJoined: ")[1].strip().lower() == "true"
             elif line.startswith("Error:"):
                 output.append(f"Error al obtener información de {pc.nombre}: {line}")
-                continue
         
         # Actualizar el registro existente
         pc.estado = status
-        pc.ip = ip
-        pc.mac_address = mac
-        pc.sistema_operativo = os
-        pc.domain_joined = domain_joined
         pc.last_seen = timezone.now()
+        
+        # Solo actualizar los otros datos si el PC está Online
+        if status == "Online":
+            pc.ip = None if ip == "N/A" else ip
+            pc.mac_address = None if mac == "N/A" else mac
+            pc.sistema_operativo = None if os_value == "N/A" else os_value
+            pc.domain_joined = domain_joined
+        
         pc.save()
     
     return "\n".join(output)

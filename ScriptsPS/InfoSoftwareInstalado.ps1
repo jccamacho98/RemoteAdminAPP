@@ -1,6 +1,7 @@
 # Script: InfoSoftwareInstalado.ps1
 param (
-    [string]$computer = $env:COMPUTERNAME  # Nombre del PC (por defecto, el equipo local)
+    [Parameter(Mandatory=$true)]
+    [string]$computer  # Nombre del PC remoto
 )
 
 # Forzar la codificación de salida a UTF-8
@@ -8,38 +9,48 @@ param (
 $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 $PSDefaultParameterValues['Write-Output:Encoding'] = 'utf8'
 
+# Suprimir mensajes de progreso
+$ProgressPreference = 'SilentlyContinue'
+
 # Validar parámetros
 if (-not $computer) {
-    Write-Output "Error: No se proporcionó el nombre del PC."
+    $errorMessage = @{ status = "error"; message = "No se proporcionó el nombre del PC." } | ConvertTo-Json -Compress
+    Write-Output $errorMessage
     exit 1
 }
 
-# Credenciales para el PC remoto (ajusta según tu entorno)
-$username = "SERVER331NB\administrator"  # Cambia según tu entorno
-$password = "Sala331server"              # Cambia según tu entorno
+# Leer credenciales desde variables de entorno
+$username = $env:WINRM_USERNAME
+$password = $env:WINRM_PASSWORD
+
+# Validar que las credenciales estén definidas
+if (-not $username -or -not $password) {
+    $errorMessage = @{ status = "error"; message = "Las variables de entorno WINRM_USERNAME y WINRM_PASSWORD deben estar definidas." } | ConvertTo-Json -Compress
+    Write-Output $errorMessage
+    exit 1
+}
+
 $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
 $credential = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
 
 # Validar si el PC está en línea usando Test-Connection
-Write-Output "Verificando si $computer está en línea..."
 try {
     $pingResult = Test-Connection -ComputerName $computer -Count 1 -Quiet -ErrorAction Stop
     if (-not $pingResult) {
-        Write-Output "$computer no está en línea. No se puede obtener la información de software."
+        $errorMessage = @{ status = "error"; message = "$computer no está en línea. No se puede obtener la información de software." } | ConvertTo-Json -Compress
+        Write-Output $errorMessage
         exit 0
     }
-    Write-Output "$computer está en línea. Procediendo a obtener la lista de software instalado..."
 }
 catch {
-    Write-Output "Error al verificar la conectividad con $computer : $($_.Exception.Message)"
+    $errorMessage = @{ status = "error"; message = "Error al verificar la conectividad con $computer : $($_.Exception.Message)" } | ConvertTo-Json -Compress
+    Write-Output $errorMessage
     exit 1
 }
 
-# Función para obtener software instalado
-function Get-InstalledSoftware {
-    param ($session)
-    $softwareList = Invoke-Command -Session $session -ScriptBlock {
-        # Obtener software desde el registro (64-bit y 32-bit)
+# Obtener software instalado usando Invoke-Command
+try {
+    $software = Invoke-Command -ComputerName $computer -Credential $credential -ScriptBlock {
         $regPaths = @(
             "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
             "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
@@ -53,63 +64,22 @@ function Get-InstalledSoftware {
         
         # Devolver la lista ordenada por nombre
         $installed | Sort-Object DisplayName
-    }
-    return $softwareList
-}
+    } -ErrorAction Stop
 
-# Conectar al equipo remoto si no es el equipo local
-if ($computer -ne $env:COMPUTERNAME) {
-    try {
-        $session = New-PSSession -ComputerName $computer -Credential $credential -ErrorAction Stop
-        Write-Output "Conexión establecida con $computer."
-    }
-    catch {
-        Write-Output "Error al conectar con $computer : $($_.Exception.Message)"
-        exit 1
-    }
-    
-    # Obtener software instalado
-    try {
-        $software = Get-InstalledSoftware -session $session
-        if ($software) {
-            Write-Output "Software instalado en $computer:"
-            $software | Format-Table -AutoSize -Property DisplayName, DisplayVersion, Publisher, InstallDate
-        } else {
-            Write-Output "No se encontró software instalado o no hay información disponible en $computer."
-        }
-    }
-    catch {
-        Write-Output "Error al obtener la lista de software en $computer : $($_.Exception.Message)"
-    }
-    finally {
-        Remove-PSSession $session -ErrorAction SilentlyContinue
-        Write-Output "Conexión cerrada con $computer."
-    }
-} else {
-    # Si es el equipo local, ejecutar directamente
-    try {
-        $software = Invoke-Command -ScriptBlock {
-            $regPaths = @(
-                "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
-                "HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
-            )
-            $installed = foreach ($path in $regPaths) {
-                Get-ItemProperty -Path $path -ErrorAction SilentlyContinue | 
-                    Where-Object { $_.DisplayName } | 
-                    Select-Object DisplayName, DisplayVersion, Publisher, InstallDate
-            }
-            $installed | Sort-Object DisplayName
-        }
-        if ($software) {
-            Write-Output "Software instalado en $computer (equipo local):"
-            $software | Format-Table -AutoSize -Property DisplayName, DisplayVersion, Publisher, InstallDate
-        } else {
-            Write-Output "No se encontró software instalado o no hay información disponible en $computer."
-        }
-    }
-    catch {
-        Write-Output "Error al obtener la lista de software en $computer : $($_.Exception.Message)"
+    if ($software) {
+        $result = @{ status = "success"; data = $software } | ConvertTo-Json -Compress -Depth 4
+        $utf8Bytes = [System.Text.Encoding]::UTF8.GetBytes($result)
+        $utf8String = [System.Text.Encoding]::UTF8.GetString($utf8Bytes)
+        Write-Output $utf8String
+    } else {
+        $result = @{ status = "success"; data = @() } | ConvertTo-Json -Compress
+        $utf8Bytes = [System.Text.Encoding]::UTF8.GetBytes($result)
+        $utf8String = [System.Text.Encoding]::UTF8.GetString($utf8Bytes)
+        Write-Output $utf8String
     }
 }
-
-Write-Output "Proceso finalizado."
+catch {
+    $errorMessage = @{ status = "error"; message = "Error al obtener la lista de software en $computer : $($_.Exception.Message)" } | ConvertTo-Json -Compress
+    Write-Output $errorMessage
+    exit 1
+}

@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from scripts.models import Info_PCs
+from monitor.models import Info_PCs 
 
 def index(request):
     pcs = Info_PCs.objects.all().order_by('nombre')

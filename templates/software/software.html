@@ -4,37 +4,38 @@
 <h1>Instalación de Software</h1>
 
 <!-- Formulario para cargar el instalador y seleccionar opciones -->
+{% if online_pcs %}
 <form method="post" enctype="multipart/form-data" id="install-form">
     {% csrf_token %}
     <div style="margin-bottom: 15px;">
         <label for="installer_file">Seleccionar instalador:</label><br>
         <input type="file" id="installer_file" name="installer_file" accept=".exe,.msi" required>
     </div>
+
     <div style="margin-bottom: 15px;">
         <h3>Tipo de instalación:</h3>
-        <div>
+        <div style="display: flex; align-items: center; gap: 5px;">
             <input type="radio" id="unattended" name="install_type" value="unattended" checked>
             <label for="unattended">Instalación desatendida (silenciosa)</label>
         </div>
-        <div>
+        <div style="display: flex; align-items: center; gap: 5px;">
             <input type="radio" id="attended" name="install_type" value="attended">
             <label for="attended">Instalación atendida (interactiva)</label>
         </div>
     </div>
+    
     <div style="margin-bottom: 15px;">
-        <h3>Seleccionar PCs:</h3>
+        <h3>Seleccionar PCs ({{ online_pcs.count }} Online):</h3>
         <div class="select-all-item">
             <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
             <label for="select_all">Seleccionar todos</label>
         </div>
         <div class="pc-selector" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; width: 300px;">
-            {% for pc in pcs %}
+            {% for pc in online_pcs %}
             <div class="pc-item">
                 <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_{{ pc.nombre }}" class="pc-checkbox">
-                <label for="pc_{{ pc.nombre }}">{{ pc.nombre }} ({{ pc.estado }})</label>
+                <label for="pc_{{ pc.nombre }}">{{ pc.nombre }}</label>
             </div>
-            {% empty %}
-            <p>No hay PCs disponibles.</p>
             {% endfor %}
         </div>
         <p id="attended-warning" style="display: none; color: red;">
@@ -43,6 +44,9 @@
     </div>
     <button type="submit" name="install_software">Instalar Software</button>
 </form>
+{% else %}
+<p>No hay PCs en línea disponibles para realizar la instalación de software.</p>
+{% endif %}
 
 <!-- Mostrar resultados -->
 {% if output %}
@@ -136,16 +140,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Validar el formulario al enviarlo
-    installForm.addEventListener('submit', function (event) {
-        const selectedCount = Array.from(pcCheckboxes).filter(cb => cb.checked).length;
-        if (selectedCount === 0) {
-            event.preventDefault();
-            alert('Por favor, seleccione al menos un PC antes de realizar esta acción.');
-        } else if (installTypeAttended.checked && selectedCount > 1) {
-            event.preventDefault();
-            alert('La instalación interactiva solo permite seleccionar un PC a la vez.');
-        }
-    });
+    if (installForm) {
+        installForm.addEventListener('submit', function (event) {
+            const selectedCount = Array.from(pcCheckboxes).filter(cb => cb.checked).length;
+            if (selectedCount === 0) {
+                event.preventDefault();
+                alert('Por favor, seleccione al menos un PC antes de realizar esta acción.');
+            } else if (installTypeAttended.checked && selectedCount > 1) {
+                event.preventDefault();
+                alert('La instalación interactiva solo permite seleccionar un PC a la vez.');
+            }
+        });
+    }
 });
 </script>
 

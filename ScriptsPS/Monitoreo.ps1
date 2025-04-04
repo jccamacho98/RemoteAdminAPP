@@ -1,9 +1,16 @@
-﻿# Script: MonitorearPC01.ps1
+﻿# Script: Monitoreo.ps1
 $computer = "PC01"
 
-# Credenciales para PC01
-$username = "SERVER331NB\administrator"
-$password = "Sala331server"
+# Leer credenciales desde variables de entorno
+$username = $env:WINRM_USERNAME
+$password = $env:WINRM_PASSWORD
+
+# Validar que las credenciales estén definidas
+if (-not $username -or -not $password) {
+    Write-Host "Error: Las variables de entorno WINRM_USERNAME y WINRM_PASSWORD deben estar definidas." -ForegroundColor Red
+    exit 1
+}
+
 $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
 $credential = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
 

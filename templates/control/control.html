@@ -1,84 +1,171 @@
 {% extends 'base.html' %}
 {% block title %}Control{% endblock %}
 {% block content %}
-    <div class="container">
-        <h1>Control de PCs</h1>
-
-        <!-- Formulario con checkboxes para PCs -->
-        <h2>Seleccione uno o más PCs</h2>
-        <form method="get">
-            <div class="select-all-item">
-                <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
-                <label for="select_all">Seleccionar todos</label>
+<div class="container">
+    <h1>Control de PCs</h1>
+    <!-- Formulario para acciones existentes (apagar, reiniciar, escritorio remoto) -->
+    <h2>Seleccione uno o más PCs ({{ online_pcs.count }} Online)</h2>
+    {% if online_pcs %}
+    <form method="get">
+        <div class="select-all-item">
+            <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
+            <label for="select_all">Seleccionar todos</label>
+        </div>
+        <div class="pc-selector"
+            style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+            {% for pc in online_pcs %}
+            <div class="pc-item">
+                <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_{{ pc.nombre }}"
+                    class="pc-checkbox">
+                <label for="pc_{{ pc.nombre }}">{{ pc.nombre }}</label>
             </div>
-            <div class="pc-selector" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                {% for i in "1"|ljust:"20" %}
-                    <div class="pc-item">
-                        <input type="checkbox" name="selected_pcs" value="PC{{ forloop.counter|stringformat:'02d' }}" id="pc{{ forloop.counter|stringformat:'02d' }}" class="pc-checkbox">
-                        <label for="pc{{ forloop.counter|stringformat:'02d' }}">PC{{ forloop.counter|stringformat:'02d' }}</label>
-                    </div>
-                {% endfor %}
+            {% endfor %}
+        </div>
+
+        <!-- Botones para acciones existentes -->
+        <h2>Acciones</h2>
+        <button type="submit" formaction="{% url 'shutdown_pc01' %}">Apagar</button>
+        <button type="submit" formaction="{% url 'restart_pc01' %}">Reiniciar</button>
+        <button type="submit" formaction="{% url 'remote_desktop_pc01' %}">Escritorio Remoto</button>
+    </form>
+    {% else %}
+    <p>No hay PCs en línea disponibles para realizar acciones.</p>
+    {% endif %}
+
+    <!-- Formulario para copiar archivo -->
+<h2>Copiar Archivo a PCs</h2>
+{% if online_pcs %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div style="margin-bottom: 15px;">
+            <label><input type="radio" name="file_source" value="upload" checked onclick="toggleFileSource()"> Subir un archivo desde mi máquina</label><br>
+            <label><input type="radio" name="file_source" value="server" onclick="toggleFileSource()"> Seleccionar un archivo del servidor</label><br>
+            
+            <!-- Opción 1: Subir un archivo -->
+            <div id="upload_file_div" style="display: block;">
+                <label for="file_to_upload">Seleccionar archivo para subir:</label><br>
+                <input type="file" id="file_to_upload" name="file_to_upload">
             </div>
+            
+            <!-- Opción 2: Seleccionar un archivo del servidor -->
+            <div id="server_file_div" style="display: none;">
+                <label for="file_from_server">Seleccionar archivo del servidor:</label><br>
+                <select id="file_from_server" name="file_from_server">
+                    <option value="" disabled selected>Seleccione un archivo</option>
+                    {% for file in available_files %}
+                        <option value="{{ file }}">{{ file }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="select-all-item">
+            <input type="checkbox" id="select_all_copy" onclick="toggleSelectAllCopy()">
+            <label for="select_all_copy">Seleccionar todos</label>
+        </div>
+        <div class="pc-selector" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+            {% for pc in online_pcs %}
+                <div class="pc-item">
+                    <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_copy_{{ pc.nombre }}" class="pc-checkbox-copy">
+                    <label for="pc_copy_{{ pc.nombre }}">{{ pc.nombre }}</label>
+                </div>
+            {% endfor %}
+        </div>
+        <button type="submit" name="copy_file">Copiar Archivo</button>
+    </form>
+{% else %}
+    <p>No hay PCs en línea disponibles para copiar archivos.</p>
+{% endif %}
 
-            <!-- Botones -->
-            <h2>Acciones</h2>
-            <button type="submit" formaction="{% url 'shutdown_pc01' %}">Apagar</button>
-            <button type="submit" formaction="{% url 'restart_pc01' %}">Reiniciar</button>
-            <button type="submit" formaction="{% url 'remote_desktop_pc01' %}">Escritorio Remoto</button>
-        </form>
+<!-- Script para alternar entre subir y seleccionar archivo -->
+<script>
+    function toggleFileSource() {
+        var uploadDiv = document.getElementById('upload_file_div');
+        var serverDiv = document.getElementById('server_file_div');
+        var uploadRadio = document.querySelector('input[name="file_source"][value="upload"]');
+        var serverRadio = document.querySelector('input[name="file_source"][value="server"]');
 
-        <!-- Resultado -->
-        <h2>Resultado:</h2>
-        {% if output %}
-            <pre>{{ output }}</pre>
-        {% else %}
-            <pre>No hay resultado aún.</pre>
-        {% endif %}
-    </div>
-
-    <!-- Script para "Seleccionar todos" -->
-    <script>
-        function toggleSelectAll() {
-            var selectAllCheckbox = document.getElementById('select_all');
-            var pcCheckboxes = document.getElementsByClassName('pc-checkbox');
-            for (var i = 0; i < pcCheckboxes.length; i++) {
-                pcCheckboxes[i].checked = selectAllCheckbox.checked;
-            }
+        if (uploadRadio.checked) {
+            uploadDiv.style.display = 'block';
+            serverDiv.style.display = 'none';
+            document.getElementById('file_to_upload').required = true;
+            document.getElementById('file_from_server').required = false;
+        } else if (serverRadio.checked) {
+            uploadDiv.style.display = 'none';
+            serverDiv.style.display = 'block';
+            document.getElementById('file_to_upload').required = false;
+            document.getElementById('file_from_server').required = true;
         }
-    </script>
+    }
+</script>
 
-    <!-- Estilos CSS -->
-    <style>
-        .pc-selector {
-            margin-top: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            width: 300px; /* Ancho del selector */
-            position: relative; /* Posición relativa para ajustes */
-            left: 0px; /* Posición horizontal */
-            top: 0px; /* Posición vertical */
-        }
+    <!-- Resultado -->
+    <h2>Resultado:</h2>
+    {% if output %}
+    <pre>{{ output }}</pre>
+    {% else %}
+    <pre>No hay resultado aún.</pre>
+    {% endif %}
+</div>
 
-        .pc-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
+<!-- Script para "Seleccionar todos" (acciones existentes) -->
+<script>
+    function toggleSelectAll() {
+        var selectAllCheckbox = document.getElementById('select_all');
+        var pcCheckboxes = document.getElementsByClassName('pc-checkbox');
+        for (var i = 0; i < pcCheckboxes.length; i++) {
+            pcCheckboxes[i].checked = selectAllCheckbox.checked;
         }
+    }
 
-        .pc-item input[type="checkbox"] {
-            margin-right: 8px; /* Espacio entre el checkbox y el nombre del PC */
+    // Script para "Seleccionar todos" (copiar archivo)
+    function toggleSelectAllCopy() {
+        var selectAllCheckbox = document.getElementById('select_all_copy');
+        var pcCheckboxes = document.getElementsByClassName('pc-checkbox-copy');
+        for (var i = 0; i < pcCheckboxes.length; i++) {
+            pcCheckboxes[i].checked = selectAllCheckbox.checked;
         }
+    }
+</script>
 
-        .select-all-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px; /* Espacio entre "Seleccionar todos" y la lista de PCs */
-        }
+<!-- Estilos CSS -->
+<style>
+    .pc-selector {
+        margin-top: 10px;
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        width: 300px;
+        /* Ancho del selector */
+        position: relative;
+        /* Posición relativa para ajustes */
+        left: 0px;
+        /* Posición horizontal */
+        top: 0px;
+        /* Posición vertical */
+    }
 
-        .select-all-item input[type="checkbox"] {
-            margin-right: 8px; /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
-        }
-    </style>
+    .pc-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+
+    .pc-item input[type="checkbox"] {
+        margin-right: 8px;
+        /* Espacio entre el checkbox y el nombre del PC */
+    }
+
+    .select-all-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        /* Espacio entre "Seleccionar todos" y la lista de PCs */
+    }
+
+    .select-all-item input[type="checkbox"] {
+        margin-right: 8px;
+        /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
+    }
+</style>
 {% endblock %}
