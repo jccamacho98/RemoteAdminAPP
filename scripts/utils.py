@@ -117,10 +117,16 @@ def update_pc_info():
                 status = line.split("Status: ")[1].strip()
             elif line.startswith("IP:"):
                 ip = line.split("IP: ")[1].strip()
+                if ip == "N/A":
+                    ip = None
             elif line.startswith("MAC:"):
                 mac = line.split("MAC: ")[1].strip()
+                if mac == "N/A":
+                    mac = None
             elif line.startswith("OS:"):
                 os_value = line.split("OS: ")[1].strip()
+                if os_value == "N/A":
+                    os_value = None
             elif line.startswith("DomainJoined:"):
                 domain_joined = line.split("DomainJoined: ")[1].strip().lower() == "true"
             elif line.startswith("Error:"):
@@ -134,7 +140,7 @@ def update_pc_info():
         if status == "Online":
             pc.ip = None if ip == "N/A" else ip
             pc.mac_address = None if mac == "N/A" else mac
-            pc.sistema_operativo = None if os_value == "N/A" else os_value
+            pc.sistema_operativo = os_value
             pc.domain_joined = domain_joined
         
         pc.save()
