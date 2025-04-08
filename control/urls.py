@@ -6,4 +6,5 @@ urlpatterns = [
     path('action/shutdown/', views.control, name='shutdown'),
     path('action/restart/', views.control, name='restart'),
     path('action/remote_desktop/', views.control, name='remote_desktop'),
+    path('download_rdp/<str:pc_name>/', views.download_rdp, name='download_rdp'),
 ]

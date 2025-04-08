@@ -1,93 +1,112 @@
 {% extends 'base.html' %}
 {% block title %}Control{% endblock %}
 {% block content %}
-    <div class="container">
-        <h1>Control de PCs</h1>
+<div class="container">
+    <h1>Control de PCs</h1>
 
-        <!-- Formulario con checkboxes para PCs (Acciones de apagar, reiniciar, escritorio remoto) -->
-        <h2>Seleccione uno o más PCs para Acciones</h2>
-        <form method="GET">
-            <div class="select-all-item">
-                <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
-                <label for="select_all">Seleccionar todos</label>
+    <!-- Formulario con checkboxes para PCs (Acciones de apagar, reiniciar, escritorio remoto) -->
+    <h2>Seleccione uno o más PCs para Acciones</h2>
+    <form method="GET">
+        <div class="select-all-item">
+            <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
+            <label for="select_all">Seleccionar todos</label>
+        </div>
+        <div class="pc-selector"
+            style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+            {% for pc in online_pcs %}
+            <div class="pc-item">
+                <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_{{ pc.nombre }}"
+                    class="pc-checkbox">
+                <label for="pc_{{ pc.nombre }}">{{ pc.nombre }}</label>
             </div>
-            <div class="pc-selector" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                {% for pc in online_pcs %}
-                    <div class="pc-item">
-                        <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_{{ pc.nombre }}" class="pc-checkbox">
-                        <label for="pc_{{ pc.nombre }}">{{ pc.nombre }} </label>
-                    </div>
+            {% empty %}
+            <div>No hay PCs online.</div>
+            {% endfor %}
+        </div>
+
+        <!-- Botones para apagar, reiniciar y escritorio remoto -->
+        <h2>Acciones</h2>
+        <button type="submit" formaction="{% url 'shutdown' %}">Apagar</button>
+        <button type="submit" formaction="{% url 'restart' %}">Reiniciar</button>
+        <button type="submit" formaction="{% url 'remote_desktop' %}">Escritorio Remoto</button>
+    </form>
+
+    <!-- Formulario para copiar archivo -->
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <h2>Seleccione uno o más PCs para Copiar Archivo</h2>
+        <div class="select-all-item">
+            <input type="checkbox" id="select_all_copy" onclick="toggleSelectAllCopy()">
+            <label for="select_all_copy">Seleccionar todos</label>
+        </div>
+        <div class="pc-selector"
+            style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+            {% for pc in online_pcs %}
+            <div class="pc-item">
+                <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_copy_{{ pc.nombre }}"
+                    class="pc-checkbox-copy">
+                <label for="pc_copy_{{ pc.nombre }}">{{ pc.nombre }}</label>
+            </div>
+            {% empty %}
+            <div>No hay PCs online.</div>
+            {% endfor %}
+        </div>
+
+        <h2>Copiar Archivo</h2>
+        <div>
+            <label for="file_source">Fuente del archivo:</label>
+            <select name="file_source" id="file_source" onchange="toggleFileSource()">
+                <option value="upload">Subir archivo</option>
+                <option value="server">Seleccionar del servidor</option>
+            </select>
+        </div>
+
+        <!-- Subir archivo -->
+        <div id="upload_file_div">
+            <label for="file_to_upload">Seleccionar archivo:</label>
+            <input type="file" name="file_to_upload" id="file_to_upload">
+        </div>
+
+        <!-- Seleccionar archivo del servidor -->
+        <div id="server_file_div" style="display: none;">
+            <label for="file_from_server">Archivos disponibles en el servidor:</label>
+            <select name="file_from_server" id="file_from_server">
+                <option value="">-- Seleccione un archivo --</option>
+                {% for file in available_files %}
+                <option value="{{ file }}">{{ file }}</option>
                 {% empty %}
-                    <div>No hay PCs online.</div>
+                <option value="" disabled>No hay archivos disponibles.</option>
                 {% endfor %}
-            </div>
+            </select>
+        </div>
 
-            <!-- Botones para apagar, reiniciar y escritorio remoto -->
-            <h2>Acciones</h2>
-            <button type="submit" formaction="{% url 'shutdown' %}">Apagar</button>
-            <button type="submit" formaction="{% url 'restart' %}">Reiniciar</button>
-            <button type="submit" formaction="{% url 'remote_desktop' %}">Escritorio Remoto</button>
-        </form>
+        <button type="submit" name="copy_file">Copiar Archivo</button>
+    </form>
 
-        <!-- Formulario para copiar archivo -->
-        <form method="POST" enctype="multipart/form-data">
-            {% csrf_token %}
-            <h2>Seleccione uno o más PCs para Copiar Archivo</h2>
-            <div class="select-all-item">
-                <input type="checkbox" id="select_all_copy" onclick="toggleSelectAllCopy()">
-                <label for="select_all_copy">Seleccionar todos</label>
-            </div>
-            <div class="pc-selector" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                {% for pc in online_pcs %}
-                    <div class="pc-item">
-                        <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_copy_{{ pc.nombre }}" class="pc-checkbox-copy">
-                        <label for="pc_copy_{{ pc.nombre }}">{{ pc.nombre }}</label>
-                    </div>
-                {% empty %}
-                    <div>No hay PCs online.</div>
-                {% endfor %}
-            </div>
+    <!-- Resultado -->
+    <h2>Resultado:</h2>
+    {% if output %}
+    <pre>{{ output }}</pre>
+    {% else %}
+    <pre>No hay resultado aún.</pre>
+    {% endif %}
 
-            <h2>Copiar Archivo</h2>
-            <div>
-                <label for="file_source">Fuente del archivo:</label>
-                <select name="file_source" id="file_source" onchange="toggleFileSource()">
-                    <option value="upload">Subir archivo</option>
-                    <option value="server">Seleccionar del servidor</option>
-                </select>
-            </div>
-
-            <!-- Subir archivo -->
-            <div id="upload_file_div">
-                <label for="file_to_upload">Seleccionar archivo:</label>
-                <input type="file" name="file_to_upload" id="file_to_upload">
-            </div>
-
-            <!-- Seleccionar archivo del servidor -->
-            <div id="server_file_div" style="display: none;">
-                <label for="file_from_server">Archivos disponibles en el servidor:</label>
-                <select name="file_from_server" id="file_from_server">
-                    <option value="">-- Seleccione un archivo --</option>
-                    {% for file in available_files %}
-                        <option value="{{ file }}">{{ file }}</option>
-                    {% empty %}
-                        <option value="" disabled>No hay archivos disponibles.</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <button type="submit" name="copy_file">Copiar Archivo</button>
-        </form>
-
-        <!-- Resultado -->
-        <h2>Resultado:</h2>
-        {% if output %}
-            <pre>{{ output }}</pre>
-        {% else %}
-            <pre>No hay resultado aún.</pre>
-        {% endif %}
-    </div>
-
+    <!-- Script para disparar RDP -->
+    {% if trigger_rdp %}
+    <script>
+        if (!window.rdpTriggered) {
+            window.rdpTriggered = true;
+            fetch(`http://localhost:8080/trigger_rdp/{{ trigger_rdp }}`)
+                .then(response => response.text())
+                .then(data => {
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error('Error al disparar RDP:', error);
+                });
+        }
+    </script>
+    {% endif %}
     <!-- Script para "Seleccionar todos" y toggle de fuente de archivo -->
     <script>
         // Seleccionar todos para el formulario GET (Acciones)
@@ -124,10 +143,14 @@
             overflow-y: auto;
             border: 1px solid #ccc;
             padding: 10px;
-            width: 300px; /* Ancho del selector */
-            position: relative; /* Posición relativa para ajustes */
-            left: 0px; /* Posición horizontal */
-            top: 0px; /* Posición vertical */
+            width: 300px;
+            /* Ancho del selector */
+            position: relative;
+            /* Posición relativa para ajustes */
+            left: 0px;
+            /* Posición horizontal */
+            top: 0px;
+            /* Posición vertical */
         }
 
         .pc-item {
@@ -137,17 +160,21 @@
         }
 
         .pc-item input[type="checkbox"] {
-            margin-right: 8px; /* Espacio entre el checkbox y el nombre del PC */
+            margin-right: 8px;
+            /* Espacio entre el checkbox y el nombre del PC */
         }
 
         .select-all-item {
             display: flex;
             align-items: center;
-            margin-bottom: 10px; /* Espacio entre "Seleccionar todos" y la lista de PCs */
+            margin-bottom: 10px;
+            /* Espacio entre "Seleccionar todos" y la lista de PCs */
         }
 
         .select-all-item input[type="checkbox"] {
-            margin-right: 8px; /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
+            margin-right: 8px;
+            /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
         }
     </style>
+</div>
 {% endblock %}
