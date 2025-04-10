@@ -32,7 +32,7 @@
     </form>
 
     <!-- Formulario para copiar archivo -->
-    <form method="POST" enctype="multipart/form-data">
+    <form id="copy-file-form" method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         <h2>Seleccione uno o más PCs para Copiar Archivo</h2>
         <div class="select-all-item">
@@ -80,13 +80,24 @@
             </select>
         </div>
 
-        <button type="submit" name="copy_file">Copiar Archivo</button>
+        <input type="hidden" name="copy_file" value="1">
+        <button type="submit">Copiar Archivo</button>
     </form>
 
-    <!-- Resultado -->
+    <!-- Indicador de progreso y resultados -->
+    <div id="copy-progress" style="display: none;">
+        <p>Copiando archivos... <span class="spinner"></span></p>
+    </div>
+    <div id="copy-results"></div>
+
+    <!-- Resultado (para otras acciones) -->
     <h2>Resultado:</h2>
-    {% if output %}
-    <pre>{{ output }}</pre>
+    {% if messages %}
+    <div>
+        {% for message in messages %}
+        <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    </div>
     {% else %}
     <pre>No hay resultado aún.</pre>
     {% endif %}
@@ -107,7 +118,8 @@
         }
     </script>
     {% endif %}
-    <!-- Script para "Seleccionar todos" y toggle de fuente de archivo -->
+
+    <!-- Script para "Seleccionar todos", toggle de fuente de archivo y manejo asíncrono de la copia -->
     <script>
         // Seleccionar todos para el formulario GET (Acciones)
         function toggleSelectAll() {
@@ -132,6 +144,75 @@
             var fileSource = document.getElementById('file_source').value;
             document.getElementById('upload_file_div').style.display = fileSource === 'upload' ? 'block' : 'none';
             document.getElementById('server_file_div').style.display = fileSource === 'server' ? 'block' : 'none';
+        }
+
+        // Manejo asíncrono del formulario de copia de archivos
+        document.getElementById('copy-file-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Evitar el envío síncrono del formulario
+
+            // Mostrar el indicador de progreso
+            document.getElementById('copy-progress').style.display = 'block';
+            document.getElementById('copy-results').innerHTML = '';
+
+            // Enviar el formulario usando AJAX
+            const formData = new FormData(this);
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest' // Indicar que es una solicitud AJAX
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.task_id) {
+                    // Iniciar el polling para verificar el estado de la tarea
+                    checkTaskStatus(data.task_id);
+                } else {
+                    document.getElementById('copy-progress').style.display = 'none';
+                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: No se pudo iniciar la tarea de copia.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('copy-progress').style.display = 'none';
+                document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al iniciar la copia de archivos.</p>';
+            });
+        });
+
+        function checkTaskStatus(taskId) {
+            const interval = setInterval(() => {
+                fetch(`/control/get_task_status/?task_id=${taskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'pending') {
+                            // La tarea sigue en curso, continuar verificando
+                            return;
+                        }
+
+                        // La tarea ha terminado (éxito o error)
+                        clearInterval(interval);
+                        document.getElementById('copy-progress').style.display = 'none';
+
+                        if (data.status === 'success') {
+                            // Mostrar los resultados
+                            let resultsHtml = '<p style="color: green;">Copia completada:</p><ul>';
+                            data.results.forEach(result => {
+                                resultsHtml += `<li>${result}</li>`;
+                            });
+                            resultsHtml += '</ul>';
+                            document.getElementById('copy-results').innerHTML = resultsHtml;
+                        } else {
+                            document.getElementById('copy-results').innerHTML = `<p style="color: red;">${data.message}</p>`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al verificar el estado de la tarea:', error);
+                        clearInterval(interval);
+                        document.getElementById('copy-progress').style.display = 'none';
+                        document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al verificar el estado de la tarea.</p>';
+                    });
+            }, 2000); // Verificar cada 2 segundos
         }
     </script>
 
@@ -174,6 +255,21 @@
         .select-all-item input[type="checkbox"] {
             margin-right: 8px;
             /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </div>

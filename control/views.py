@@ -5,15 +5,17 @@ from django.utils import timezone
 import os
 import uuid
 from django.conf import settings
-from django.http import FileResponse
-from django.contrib import messages  # Para mostrar mensajes de éxito/error
+from django.http import FileResponse, JsonResponse
+from django.contrib import messages
+from celery.result import AsyncResult
+from .tasks import copy_file_to_pcs  # Importa la tarea de Celery
 
 def control(request):
     # Obtener solo los PCs que están Online
     online_pcs = Info_PCs.objects.filter(estado="Online").order_by('nombre')
 
     # Listar los archivos disponibles en la carpeta SharedFiles
-    shared_files_dir = os.path.join(settings.BASE_DIR, 'SharedFiles')
+    shared_files_dir = r"D:\SharedFiles"
     available_files = []
     if os.path.exists(shared_files_dir):
         available_files = [f for f in os.listdir(shared_files_dir) if os.path.isfile(os.path.join(shared_files_dir, f))]
@@ -132,34 +134,17 @@ def control(request):
                 'available_files': available_files,
             })
 
-        remote_destination = f"C:\\Archivos compartidos Server\\{file_to_copy_name}"
+        # Iniciar la tarea de copia de archivos en segundo plano
         script_path = os.path.join(settings.BASE_DIR, 'ScriptsPS', 'CopyFileToPC.ps1')
-        for pc_name in selected_pcs:
-            try:
-                pc = Info_PCs.objects.get(nombre=pc_name)
-                if pc.estado != "Online":
-                    messages.error(request, f"Error: El PC {pc_name} está offline y no se puede copiar el archivo.")
-                    continue
-            except Info_PCs.DoesNotExist:
-                messages.error(request, f"Error: El PC {pc_name} no existe en la base de datos.")
-                continue
+        task = copy_file_to_pcs.delay(selected_pcs, source_file_path, file_to_copy_name, script_path)
 
-            source_file_path = source_file_path.replace('/', '\\')
-            remote_destination = remote_destination.replace('/', '\\')
-            args = f'"{pc_name}" "{source_file_path}" "{remote_destination}"'
-            result = run_powershell_script(script_path, args=args)
-            messages.info(request, f"Resultado para {pc_name}:\n{result}")
-
+        # Si el archivo es subido, lo eliminaremos después de iniciar la tarea
         if file_source == "upload":
-            try:
-                os.remove(source_file_path)
-            except Exception as e:
-                messages.warning(request, f"Advertencia: No se pudo eliminar el archivo temporal {source_file_path}: {str(e)}")
+            # Guardamos la ruta del archivo temporal en la sesión para eliminarlo después
+            request.session['temp_file_to_delete'] = source_file_path
 
-        return render(request, 'control/control.html', {
-            'online_pcs': online_pcs,
-            'available_files': available_files,
-        })
+        # Devolver el ID de la tarea para que el frontend pueda consultar su estado
+        return JsonResponse({'task_id': task.id})
 
     # Manejar las acciones de apagar, reiniciar y escritorio remoto (GET)
     if request.method == "GET":
@@ -246,10 +231,33 @@ def control(request):
         'available_files': available_files,
     })
 
+def get_task_status(request):
+    task_id = request.GET.get('task_id')
+    if not task_id:
+        return JsonResponse({'status': 'error', 'message': 'No se proporcionó un ID de tarea.'})
+
+    task = AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {'status': 'pending', 'message': 'La tarea está en curso...'}
+    elif task.state == 'SUCCESS':
+        results = task.result
+        # Eliminar el archivo temporal si existe en la sesión
+        temp_file_to_delete = request.session.get('temp_file_to_delete')
+        if temp_file_to_delete and os.path.exists(temp_file_to_delete):
+            try:
+                os.remove(temp_file_to_delete)
+                del request.session['temp_file_to_delete']
+            except Exception as e:
+                print(f"Error al eliminar el archivo temporal: {e}")
+        response = {'status': 'success', 'results': results}
+    else:
+        response = {'status': 'error', 'message': f'La tarea falló: {str(task.result)}'}
+    return JsonResponse(response)
+
 def download_rdp(request, pc_name):
     rdp_path = os.path.join(settings.BASE_DIR, 'ScriptsPS', f'{pc_name}.rdp')
     online_pcs = Info_PCs.objects.filter(estado="Online").order_by('nombre')
-    shared_files_dir = os.path.join(settings.BASE_DIR, 'SharedFiles')
+    shared_files_dir = r"D:\SharedFiles"
     available_files = [f for f in os.listdir(shared_files_dir) if os.path.isfile(os.path.join(shared_files_dir, f))] if os.path.exists(shared_files_dir) else []
     if os.path.exists(rdp_path):
         return FileResponse(
