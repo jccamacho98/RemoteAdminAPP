@@ -17,19 +17,17 @@ def run_powershell_script(script_path, args=""):
             'http://192.168.128.31:5985/wsman',
             auth=(username, password),
             transport='ntlm',
-            operation_timeout_sec=5,
-            read_timeout_sec=10
+            operation_timeout_sec=60,  # Aumentar el tiempo de espera
+            read_timeout_sec=90        # Aumentar el tiempo de espera
         )
         command = f'powershell -File "{script_path}" {args}'
         result = session.run_ps(command)
+        # Decodificar la salida como UTF-8
         try:
-            output = result.std_out.decode('utf-8')
-        except UnicodeDecodeError:
-            try:
-                output = result.std_out.decode('utf-16-le')
-            except UnicodeDecodeError:
-                output = result.std_out.decode('windows-1252', errors='replace')
-        error_output = result.std_err.decode('windows-1252', errors='replace')
+            output = result.std_out.decode('utf-8', errors='replace')
+        except Exception as e:
+            return f"Error al decodificar la salida del script: {str(e)}"
+        error_output = result.std_err.decode('utf-8', errors='replace')
         if error_output:
             return f"Error en el script: {error_output}"
         return output
@@ -50,18 +48,16 @@ def run_powershell_command(command):
             'http://192.168.128.31:5985/wsman',
             auth=(username, password),
             transport='ntlm',
-            operation_timeout_sec=5,
-            read_timeout_sec=10
+            operation_timeout_sec=60,  # Aumentar el tiempo de espera
+            read_timeout_sec=90        # Aumentar el tiempo de espera
         )
         result = session.run_ps(command)
+        # Decodificar la salida como UTF-8
         try:
-            output = result.std_out.decode('utf-8')
-        except UnicodeDecodeError:
-            try:
-                output = result.std_out.decode('utf-16-le')
-            except UnicodeDecodeError:
-                output = result.std_out.decode('windows-1252', errors='replace')
-        error_output = result.std_err.decode('windows-1252', errors='replace')
+            output = result.std_out.decode('utf-8', errors='replace')
+        except Exception as e:
+            return f"Error al decodificar la salida del comando: {str(e)}"
+        error_output = result.std_err.decode('utf-8', errors='replace')
         if error_output:
             return f"Error en el comando: {error_output}"
         return output

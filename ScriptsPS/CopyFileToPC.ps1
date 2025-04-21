@@ -129,3 +129,4 @@ catch {
 # Cerrar la sesión
 Remove-PSSession $session
 Write-Output "Proceso finalizado."
+Write-Output "Éxito: Copia completada."

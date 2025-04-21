@@ -6,7 +6,8 @@
 
     <!-- Formulario con checkboxes para PCs (Acciones de apagar, reiniciar, escritorio remoto) -->
     <h2>Seleccione uno o más PCs para Acciones</h2>
-    <form method="GET">
+    <form id="action-form" method="POST" action="/control/">
+        {% csrf_token %}
         <div class="select-all-item">
             <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
             <label for="select_all">Seleccionar todos</label>
@@ -26,9 +27,17 @@
 
         <!-- Botones para apagar, reiniciar y escritorio remoto -->
         <h2>Acciones</h2>
-        <button type="submit" formaction="{% url 'shutdown' %}">Apagar</button>
-        <button type="submit" formaction="{% url 'restart' %}">Reiniciar</button>
-        <button type="submit" formaction="{% url 'remote_desktop' %}">Escritorio Remoto</button>
+        <button type="button" onclick="shutdownPCs()">Apagar</button>
+        <button type="button" onclick="restartPCs()">Reiniciar</button>
+        <button type="button" onclick="remoteDesktop()">Escritorio Remoto</button>
+
+        <!-- Campo oculto para la acción de escritorio remoto -->
+        <input type="hidden" name="remote_desktop" id="remote_desktop_input" value="">
+
+        <!-- Spinner para las acciones -->
+        <div id="action-progress" style="display: none; margin-top: 10px;">
+            <p>Procesando acción... <span class="spinner"></span></p>
+        </div>
     </form>
 
     <!-- Formulario para copiar archivo -->
@@ -84,11 +93,11 @@
         <button type="submit">Copiar Archivo</button>
     </form>
 
-    <!-- Indicador de progreso y resultados -->
-    <div id="copy-progress" style="display: none;">
+    <!-- Spinner y resultados para la acción de copiar archivo -->
+    <div id="copy-progress" style="display: none; margin-top: 10px;">
         <p>Copiando archivos... <span class="spinner"></span></p>
     </div>
-    <div id="copy-results"></div>
+    <div id="copy-results" style="margin-top: 10px;"></div>
 
     <!-- Resultado (para otras acciones) -->
     <h2>Resultado:</h2>
@@ -103,25 +112,22 @@
     {% endif %}
 
     <!-- Script para disparar RDP -->
-    {% if trigger_rdp %}
+    {% if trigger_rdp and request.session.rdp_triggered %}
     <script>
-        if (!window.rdpTriggered) {
-            window.rdpTriggered = true;
-            fetch(`http://localhost:8080/trigger_rdp/{{ trigger_rdp }}`)
-                .then(response => response.text())
-                .then(data => {
-                    console.log(data);
-                })
-                .catch(error => {
-                    console.error('Error al disparar RDP:', error);
-                });
-        }
+        fetch(`http://localhost:8080/trigger_rdp/{{ trigger_rdp }}`)
+            .then(response => response.text())
+            .then(data => {
+                console.log(data);
+            })
+            .catch(error => {
+                console.error('Error al disparar RDP:', error);
+            });
     </script>
     {% endif %}
 
-    <!-- Script para "Seleccionar todos", toggle de fuente de archivo y manejo asíncrono de la copia -->
+    <!-- Script para "Seleccionar todos", toggle de fuente de archivo y manejo asíncrono -->
     <script>
-        // Seleccionar todos para el formulario GET (Acciones)
+        // Seleccionar todos para el formulario de acciones
         function toggleSelectAll() {
             var selectAllCheckbox = document.getElementById('select_all');
             var pcCheckboxes = document.getElementsByClassName('pc-checkbox');
@@ -130,7 +136,7 @@
             }
         }
 
-        // Seleccionar todos para el formulario POST (Copiar Archivo)
+        // Seleccionar todos para el formulario de copiar archivo
         function toggleSelectAllCopy() {
             var selectAllCheckbox = document.getElementById('select_all_copy');
             var pcCheckboxes = document.getElementsByClassName('pc-checkbox-copy');
@@ -146,11 +152,22 @@
             document.getElementById('server_file_div').style.display = fileSource === 'server' ? 'block' : 'none';
         }
 
+        // Obtener el token CSRF
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+
         // Manejo asíncrono del formulario de copia de archivos
         document.getElementById('copy-file-form').addEventListener('submit', function(event) {
             event.preventDefault(); // Evitar el envío síncrono del formulario
 
-            // Mostrar el indicador de progreso
+            const selectedPCs = Array.from(document.querySelectorAll('input[name="selected_pcs"]:checked')).map(input => input.value);
+            if (selectedPCs.length === 0) {
+                alert("Por favor, seleccione al menos un PC.");
+                return;
+            }
+
+            // Mostrar el spinner para copiar archivo
             document.getElementById('copy-progress').style.display = 'block';
             document.getElementById('copy-results').innerHTML = '';
 
@@ -167,10 +184,10 @@
             .then(data => {
                 if (data.task_id) {
                     // Iniciar el polling para verificar el estado de la tarea
-                    checkTaskStatus(data.task_id);
+                    checkTaskStatus(data.task_id, 'copy');
                 } else {
                     document.getElementById('copy-progress').style.display = 'none';
-                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: No se pudo iniciar la tarea de copia.</p>';
+                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: ' + (data.error || 'No se pudo iniciar la tarea de copia.') + '</p>';
                 }
             })
             .catch(error => {
@@ -180,7 +197,120 @@
             });
         });
 
-        function checkTaskStatus(taskId) {
+        // Función para apagar PCs
+        function shutdownPCs() {
+            const selectedPCs = Array.from(document.querySelectorAll('input[name="selected_pcs"]:checked')).map(input => input.value);
+            if (selectedPCs.length === 0) {
+                alert("Por favor, seleccione al menos un PC.");
+                return;
+            }
+
+            // Confirmar la acción
+            if (!confirm(`¿Está seguro de que desea apagar ${selectedPCs.length} PC(s)? Esto puede interrumpir cualquier trabajo en curso.`)) {
+                return;
+            }
+
+            // Mostrar el spinner para acciones
+            document.getElementById('action-progress').style.display = 'block';
+
+            const params = new URLSearchParams();
+            selectedPCs.forEach(pc => params.append('selected_pcs', pc));
+            params.append('shutdown', 'true');
+            params.append('csrfmiddlewaretoken', getCsrfToken());
+
+            fetch('/control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.task_id) {
+                    checkTaskStatus(data.task_id, 'action');
+                } else {
+                    document.getElementById('action-progress').style.display = 'none';
+                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: ' + (data.error || 'No se pudo iniciar la tarea de apagado.') + '</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('action-progress').style.display = 'none';
+                document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al iniciar el apagado de los PCs.</p>';
+            });
+        }
+
+        // Función para reiniciar PCs
+        function restartPCs() {
+            const selectedPCs = Array.from(document.querySelectorAll('input[name="selected_pcs"]:checked')).map(input => input.value);
+            if (selectedPCs.length === 0) {
+                alert("Por favor, seleccione al menos un PC.");
+                return;
+            }
+
+            // Confirmar la acción
+            if (!confirm(`¿Está seguro de que desea reiniciar ${selectedPCs.length} PC(s)? Esto puede interrumpir cualquier trabajo en curso.`)) {
+                return;
+            }
+
+            // Mostrar el spinner para acciones
+            document.getElementById('action-progress').style.display = 'block';
+
+            const params = new URLSearchParams();
+            selectedPCs.forEach(pc => params.append('selected_pcs', pc));
+            params.append('restart', 'true');
+            params.append('csrfmiddlewaretoken', getCsrfToken());
+
+            fetch('/control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: params
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.task_id) {
+                    checkTaskStatus(data.task_id, 'action');
+                } else {
+                    document.getElementById('action-progress').style.display = 'none';
+                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: ' + (data.error || 'No se pudo iniciar la tarea de reinicio.') + '</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('action-progress').style.display = 'none';
+                document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al iniciar el reinicio de los PCs.</p>';
+            });
+        }
+
+        // Función para escritorio remoto
+        function remoteDesktop() {
+            const selectedPCs = Array.from(document.querySelectorAll('input[name="selected_pcs"]:checked')).map(input => input.value);
+            if (selectedPCs.length === 0) {
+                alert("Por favor, seleccione al menos un PC.");
+                return;
+            }
+            if (selectedPCs.length > 1) {
+                alert("Aviso: No se pueden iniciar sesiones de Escritorio Remoto para múltiples PCs al mismo tiempo. Por favor, seleccione solo un PC.");
+                return;
+            }
+
+            // Mostrar el spinner para acciones
+            document.getElementById('action-progress').style.display = 'block';
+
+            // Establecer el valor del campo oculto para indicar que es una acción de escritorio remoto
+            document.getElementById('remote_desktop_input').value = 'true';
+
+            // Enviar el formulario de manera síncrona
+            document.getElementById('action-form').submit();
+        }
+
+        // Función para verificar el estado de las tareas
+        function checkTaskStatus(taskId, type) {
             const interval = setInterval(() => {
                 fetch(`/control/get_task_status/?task_id=${taskId}`)
                     .then(response => response.json())
@@ -192,16 +322,23 @@
 
                         // La tarea ha terminado (éxito o error)
                         clearInterval(interval);
-                        document.getElementById('copy-progress').style.display = 'none';
+                        if (type === 'copy') {
+                            document.getElementById('copy-progress').style.display = 'none';
+                        } else {
+                            document.getElementById('action-progress').style.display = 'none';
+                        }
 
                         if (data.status === 'success') {
                             // Mostrar los resultados
-                            let resultsHtml = '<p style="color: green;">Copia completada:</p><ul>';
+                            let resultsHtml = '<p style="color: green;">Tarea completada:</p><ul>';
                             data.results.forEach(result => {
-                                resultsHtml += `<li>${result}</li>`;
+                                const statusColor = result.status === 'success' ? 'green' : 'red';
+                                resultsHtml += `<li style="color: ${statusColor};">${result.pc}: ${result.message}</li>`;
                             });
                             resultsHtml += '</ul>';
                             document.getElementById('copy-results').innerHTML = resultsHtml;
+                            // Recargar la página para actualizar la lista de PCs
+                            setTimeout(() => location.reload(), 2000);
                         } else {
                             document.getElementById('copy-results').innerHTML = `<p style="color: red;">${data.message}</p>`;
                         }
@@ -209,7 +346,11 @@
                     .catch(error => {
                         console.error('Error al verificar el estado de la tarea:', error);
                         clearInterval(interval);
-                        document.getElementById('copy-progress').style.display = 'none';
+                        if (type === 'copy') {
+                            document.getElementById('copy-progress').style.display = 'none';
+                        } else {
+                            document.getElementById('action-progress').style.display = 'none';
+                        }
                         document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al verificar el estado de la tarea.</p>';
                     });
             }, 2000); // Verificar cada 2 segundos
@@ -225,13 +366,9 @@
             border: 1px solid #ccc;
             padding: 10px;
             width: 300px;
-            /* Ancho del selector */
             position: relative;
-            /* Posición relativa para ajustes */
             left: 0px;
-            /* Posición horizontal */
             top: 0px;
-            /* Posición vertical */
         }
 
         .pc-item {
@@ -242,19 +379,16 @@
 
         .pc-item input[type="checkbox"] {
             margin-right: 8px;
-            /* Espacio entre el checkbox y el nombre del PC */
         }
 
         .select-all-item {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
-            /* Espacio entre "Seleccionar todos" y la lista de PCs */
         }
 
         .select-all-item input[type="checkbox"] {
             margin-right: 8px;
-            /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
         }
 
         .spinner {
@@ -270,6 +404,11 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        #action-progress, #copy-progress {
+            font-weight: bold;
+            color: #3498db;
         }
     </style>
 </div>
