@@ -1,60 +1,61 @@
 ﻿{% extends 'base.html' %}
+
 {% block title %}Inicio{% endblock %}
+
 {% block content %}
-    <div class="container">
+    <div class="content">
         <h1>PCs Sala 331</h1>
 
         <!-- Cuadrícula de 20 PCs en 4 columnas -->
-        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+        <div class="grid-container">
             <!-- Columna 1 (PC01-PC05) -->
-            <div style="width: 22%;">
+            <div class="grid-column">
                 {% for pc in col1_pcs %}
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                    <div class="pc-item">
+                        <span class="pc-icon {% if pc.estado|lower == 'online' %}status-online{% endif %}">🖥️</span>
                         <div>
-                            <h3 style="margin: 0; color: #333;">{{ pc.nombre }}</h3>
-                            <p style="margin: 0; color: {% if pc.estado == 'Online' %}green{% elif pc.estado == 'Offline' %}red{% else %}gray{% endif %};">{{ pc.estado }}</p>
+                            <h3>{{ pc.nombre }}</h3>
+                            <p class="pc-status {% if pc.estado|lower == 'online' %}status-online{% elif pc.estado|lower == 'offline' %}status-offline{% else %}status-unknown{% endif %}">{{ pc.estado }}</p>
                         </div>
                     </div>
                 {% endfor %}
             </div>
             <!-- Columna 2 (PC06-PC10) -->
-            <div style="width: 22%; margin-right: 100px;">
+            <div class="grid-column">
                 {% for pc in col2_pcs %}
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                    <div class="pc-item">
+                        <span class="pc-icon {% if pc.estado|lower == 'online' %}status-online{% endif %}">🖥️</span>
                         <div>
-                            <h3 style="margin: 0; color: #333;">{{ pc.nombre }}</h3>
-                            <p style="margin: 0; color: {% if pc.estado == 'Online' %}green{% elif pc.estado == 'Offline' %}red{% else %}gray{% endif %};">{{ pc.estado }}</p>
+                            <h3>{{ pc.nombre }}</h3>
+                            <p class="pc-status {% if pc.estado|lower == 'online' %}status-online{% elif pc.estado|lower == 'offline' %}status-offline{% else %}status-unknown{% endif %}">{{ pc.estado }}</p>
                         </div>
                     </div>
                 {% endfor %}
             </div>
             <!-- Columna 3 (PC11-PC15) -->
-            <div style="width: 22%;">
+            <div class="grid-column">
                 {% for pc in col3_pcs %}
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                    <div class="pc-item">
+                        <span class="pc-icon {% if pc.estado|lower == 'online' %}status-online{% endif %}">🖥️</span>
                         <div>
-                            <h3 style="margin: 0; color: #333;">{{ pc.nombre }}</h3>
-                            <p style="margin: 0; color: {% if pc.estado == 'Online' %}green{% elif pc.estado == 'Offline' %}red{% else %}gray{% endif %};">{{ pc.estado }}</p>
+                            <h3>{{ pc.nombre }}</h3>
+                            <p class="pc-status {% if pc.estado|lower == 'online' %}status-online{% elif pc.estado|lower == 'offline' %}status-offline{% else %}status-unknown{% endif %}">{{ pc.estado }}</p>
                         </div>
                     </div>
                 {% endfor %}
             </div>
             <!-- Columna 4 (PC16-PC20) -->
-            <div style="width: 22%;">
+            <div class="grid-column">
                 {% for pc in col4_pcs %}
-                    <div style="display: flex; align-items: center; margin: 10px 0;">
-                        <span style="font-size: 40px; margin-right: 10px;">🖥️</span>
+                    <div class="pc-item">
+                        <span class="pc-icon {% if pc.estado|lower == 'online' %}status-online{% endif %}">🖥️</span>
                         <div>
-                            <h3 style="margin: 0; color: #333;">{{ pc.nombre }}</h3>
-                            <p style="margin: 0; color: {% if pc.estado == 'Online' %}green{% elif pc.estado == 'Offline' %}red{% else %}gray{% endif %};">{{ pc.estado }}</p>
+                            <h3>{{ pc.nombre }}</h3>
+                            <p class="pc-status {% if pc.estado|lower == 'online' %}status-online{% elif pc.estado|lower == 'offline' %}status-offline{% else %}status-unknown{% endif %}">{{ pc.estado }}</p>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         </div>
-
     </div>
 {% endblock %}

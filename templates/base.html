@@ -1,30 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Remota - {% block title %}{% endblock %}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-        nav { background-color: #333; padding: 10px; position: fixed; top: 0; width: 100%; }
-        nav a { color: white; margin: 0 15px; text-decoration: none; }
-        nav a:hover { color: #4CAF50; }
-        .container { max-width: 800px; margin: 60px auto 20px; padding: 20px; }
-        button { background-color: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background-color: #45a049; }
-        pre { background-color: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
-        form { margin: 10px 0; }
-        input[type="text"] { padding: 5px; width: 300px; }
-        label { display: block; margin-top: 10px; }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 <body>
-    <nav>
-        <a href="{% url 'index' %}">Inicio</a>
-        <a href="{% url 'monitor' %}">Monitoreo</a>
-        <a href="{% url 'software' %}">Software</a>
-        <a href="{% url 'control' %}">Control</a>
-    </nav>
-    <div class="container">
-        {% block content %}{% endblock %}
-    </div>
+    <header>
+        <nav>
+            <div class="menu">
+                <a href="{% url 'index' %}" class="{% if request.path == '/' %}active{% endif %}">Inicio</a>
+                <a href="{% url 'monitor' %}" class="{% if request.path == '/monitor/' %}active{% endif %}">Monitoreo</a>
+                <a href="{% url 'software' %}" class="{% if request.path == '/software/' %}active{% endif %}">Software</a>
+                <a href="{% url 'control' %}" class="{% if request.path == '/control/' %}active{% endif %}">Control</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="content">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
 </body>
 </html>

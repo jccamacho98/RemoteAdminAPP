@@ -1,132 +1,225 @@
 {% extends 'base.html' %}
+
 {% block title %}Control{% endblock %}
+
 {% block content %}
-<div class="container">
+<div class="content">
     <h1>Control de PCs</h1>
 
+    <!-- Sección para advertencias -->
+    <div class="warning-section">
+        <h2>Advertencias</h2>
+        <div id="warning-list">
+            <!-- Las advertencias aparecerán aquí -->
+        </div>
+    </div>
+
     <!-- Formulario con checkboxes para PCs (Acciones de apagar, reiniciar, escritorio remoto) -->
-    <h2>Seleccione uno o más PCs para Acciones</h2>
-    <form id="action-form" method="POST" action="/control/">
-        {% csrf_token %}
-        <div class="select-all-item">
-            <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
-            <label for="select_all">Seleccionar todos</label>
-        </div>
-        <div class="pc-selector"
-            style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-            {% for pc in online_pcs %}
-            <div class="pc-item">
-                <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_{{ pc.nombre }}"
-                    class="pc-checkbox">
-                <label for="pc_{{ pc.nombre }}">{{ pc.nombre }}</label>
+    <div class="action-section">
+        <h2>Seleccione uno o más PCs para Acciones</h2>
+        <form id="action-form" method="POST" action="/control/">
+            {% csrf_token %}
+            <div class="select-all-item">
+                <input type="checkbox" id="select_all" onclick="toggleSelectAll()">
+                <label for="select_all">Seleccionar todos</label>
             </div>
-            {% empty %}
-            <div>No hay PCs online.</div>
-            {% endfor %}
-        </div>
+            <div class="pc-selector" id="action-pc-list">
+                {% for pc in online_pcs %}
+                <div class="pc-item">
+                    <span class="pc-icon status-online">🖥️</span>
+                    <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_{{ pc.nombre }}"
+                        class="pc-checkbox">
+                    <label for="pc_{{ pc.nombre }}">{{ pc.nombre }}</label>
+                </div>
+                {% empty %}
+                <div>No hay PCs online.</div>
+                {% endfor %}
+            </div>
 
-        <!-- Botones para apagar, reiniciar y escritorio remoto -->
-        <h2>Acciones</h2>
-        <button type="button" onclick="shutdownPCs()">Apagar</button>
-        <button type="button" onclick="restartPCs()">Reiniciar</button>
-        <button type="button" onclick="remoteDesktop()">Escritorio Remoto</button>
+            <!-- Botones para apagar, reiniciar y escritorio remoto -->
+            <h2>Acciones</h2>
+            <button type="button" class="button" onclick="shutdownPCs()">Apagar</button>
+            <button type="button" class="button" onclick="restartPCs()">Reiniciar</button>
+            <button type="button" class="button" onclick="remoteDesktop()">Escritorio Remoto</button>
 
-        <!-- Campo oculto para la acción de escritorio remoto -->
-        <input type="hidden" name="remote_desktop" id="remote_desktop_input" value="">
+            <!-- Campo oculto para la acción de escritorio remoto -->
+            <input type="hidden" name="remote_desktop" id="remote_desktop_input" value="">
 
-        <!-- Spinner para las acciones -->
-        <div id="action-progress" style="display: none; margin-top: 10px;">
-            <p>Procesando acción... <span class="spinner"></span></p>
-        </div>
-    </form>
+            <!-- Spinner para las acciones -->
+            <div id="action-progress" class="action-progress" style="display: none;">
+                <p>Procesando acción... <span class="spinner"></span></p>
+            </div>
+        </form>
+    </div>
 
     <!-- Formulario para copiar archivo -->
-    <form id="copy-file-form" method="POST" enctype="multipart/form-data">
-        {% csrf_token %}
-        <h2>Seleccione uno o más PCs para Copiar Archivo</h2>
-        <div class="select-all-item">
-            <input type="checkbox" id="select_all_copy" onclick="toggleSelectAllCopy()">
-            <label for="select_all_copy">Seleccionar todos</label>
-        </div>
-        <div class="pc-selector"
-            style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-            {% for pc in online_pcs %}
-            <div class="pc-item">
-                <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_copy_{{ pc.nombre }}"
-                    class="pc-checkbox-copy">
-                <label for="pc_copy_{{ pc.nombre }}">{{ pc.nombre }}</label>
+    <div class="copy-section">
+        <form id="copy-file-form" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <h2>Seleccione uno o más PCs para Copiar Archivo</h2>
+            <div class="select-all-item">
+                <input type="checkbox" id="select_all_copy" onclick="toggleSelectAllCopy()">
+                <label for="select_all_copy">Seleccionar todos</label>
             </div>
-            {% empty %}
-            <div>No hay PCs online.</div>
-            {% endfor %}
-        </div>
-
-        <h2>Copiar Archivo</h2>
-        <div>
-            <label for="file_source">Fuente del archivo:</label>
-            <select name="file_source" id="file_source" onchange="toggleFileSource()">
-                <option value="upload">Subir archivo</option>
-                <option value="server">Seleccionar del servidor</option>
-            </select>
-        </div>
-
-        <!-- Subir archivo -->
-        <div id="upload_file_div">
-            <label for="file_to_upload">Seleccionar archivo:</label>
-            <input type="file" name="file_to_upload" id="file_to_upload">
-        </div>
-
-        <!-- Seleccionar archivo del servidor -->
-        <div id="server_file_div" style="display: none;">
-            <label for="file_from_server">Archivos disponibles en el servidor:</label>
-            <select name="file_from_server" id="file_from_server">
-                <option value="">-- Seleccione un archivo --</option>
-                {% for file in available_files %}
-                <option value="{{ file }}">{{ file }}</option>
+            <div class="pc-selector" id="copy-pc-list">
+                {% for pc in online_pcs %}
+                <div class="pc-item">
+                    <span class="pc-icon status-online">🖥️</span>
+                    <input type="checkbox" name="selected_pcs" value="{{ pc.nombre }}" id="pc_copy_{{ pc.nombre }}"
+                        class="pc-checkbox-copy">
+                    <label for="pc_copy_{{ pc.nombre }}">{{ pc.nombre }}</label>
+                </div>
                 {% empty %}
-                <option value="" disabled>No hay archivos disponibles.</option>
+                <div>No hay PCs online.</div>
                 {% endfor %}
-            </select>
+            </div>
+
+            <h2>Copiar Archivo</h2>
+            <div>
+                <label for="file_source">Fuente del archivo:</label>
+                <select name="file_source" id="file_source" onchange="toggleFileSource()">
+                    <option value="upload">Subir archivo</option>
+                    <option value="server">Seleccionar del servidor</option>
+                </select>
+            </div>
+
+            <!-- Subir archivo -->
+            <div id="upload_file_div">
+                <label for="file_to_upload">Seleccionar archivo:</label>
+                <input type="file" name="file_to_upload" id="file_to_upload">
+            </div>
+
+            <!-- Seleccionar archivo del servidor -->
+            <div id="server_file_div" class="server-file-div">
+                <label for="file_from_server">Archivos disponibles en el servidor:</label>
+                <select name="file_from_server" id="file_from_server">
+                    <option value="">-- Seleccione un archivo --</option>
+                    {% for file in available_files %}
+                    <option value="{{ file }}">{{ file }}</option>
+                    {% empty %}
+                    <option value="" disabled>No hay archivos disponibles.</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <input type="hidden" name="copy_file" value="1">
+            <button type="submit" class="button">Copiar Archivo</button>
+        </form>
+
+        <!-- Spinner y resultados para la acción de copiar archivo -->
+        <div id="copy-progress" class="action-progress" style="display: none;">
+            <p>Copiando archivos... <span class="spinner"></span></p>
         </div>
-
-        <input type="hidden" name="copy_file" value="1">
-        <button type="submit">Copiar Archivo</button>
-    </form>
-
-    <!-- Spinner y resultados para la acción de copiar archivo -->
-    <div id="copy-progress" style="display: none; margin-top: 10px;">
-        <p>Copiando archivos... <span class="spinner"></span></p>
+        <div id="copy-results" class="copy-results"></div>
     </div>
-    <div id="copy-results" style="margin-top: 10px;"></div>
 
     <!-- Resultado (para otras acciones) -->
-    <h2>Resultado:</h2>
-    {% if messages %}
-    <div>
-        {% for message in messages %}
-        <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
-        {% endfor %}
+    <div class="result-section">
+        <h2>Resultado:</h2>
+        {% if messages %}
+        <div>
+            {% for message in messages %}
+            <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+            {% endfor %}
+        </div>
+        {% else %}
+        <pre>No hay resultado aún.</pre>
+        {% endif %}
     </div>
-    {% else %}
-    <pre>No hay resultado aún.</pre>
-    {% endif %}
 
     <!-- Script para disparar RDP -->
-    {% if trigger_rdp and request.session.rdp_triggered %}
+    {% if trigger_rdp and rdp_triggered %}
     <script>
+        // Mostrar el spinner mientras se dispara el RDP
+        document.getElementById('action-progress').style.display = 'block';
+
         fetch(`http://localhost:8080/trigger_rdp/{{ trigger_rdp }}`)
-            .then(response => response.text())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error al disparar RDP: ' + response.statusText);
+                }
+                return response.text();
+            })
             .then(data => {
-                console.log(data);
+                console.log('RDP disparado:', data);
+                document.getElementById('action-progress').style.display = 'none';
+                document.getElementById('copy-results').innerHTML = '<p class="success">Sesión de Escritorio Remoto iniciada para {{ trigger_rdp }}.</p>';
+                // Limpiar las variables de sesión después de disparar
+                fetch('/control/clear_rdp_session/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: 'clear_rdp=true'
+                });
             })
             .catch(error => {
                 console.error('Error al disparar RDP:', error);
+                document.getElementById('action-progress').style.display = 'none';
+                document.getElementById('copy-results').innerHTML = '<p class="error">Error al iniciar la sesión de Escritorio Remoto: ' + error.message + '</p>';
             });
     </script>
     {% endif %}
 
-    <!-- Script para "Seleccionar todos", toggle de fuente de archivo y manejo asíncrono -->
+    <!-- Script para manejar WebSocket y actualizaciones dinámicas -->
     <script>
+        // Conectar al WebSocket
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/pc_status/');
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            // Actualizar la lista de PCs
+            if (data.type === 'pc_status_update') {
+                const pcs = data.pcs;
+                const actionList = document.getElementById('action-pc-list');
+                const copyList = document.getElementById('copy-pc-list');
+                let actionHtml = '';
+                let copyHtml = '';
+
+                pcs.forEach(pc => {
+                    if (pc.estado.toLowerCase() === 'online') {
+                        actionHtml += `
+                            <div class="pc-item">
+                                <span class="pc-icon status-online">🖥️</span>
+                                <input type="checkbox" name="selected_pcs" value="${pc.nombre}" id="pc_${pc.nombre}" class="pc-checkbox">
+                                <label for="pc_${pc.nombre}">${pc.nombre}</label>
+                            </div>
+                        `;
+                        copyHtml += `
+                            <div class="pc-item">
+                                <span class="pc-icon status-online">🖥️</span>
+                                <input type="checkbox" name="selected_pcs" value="${pc.nombre}" id="pc_copy_${pc.nombre}" class="pc-checkbox-copy">
+                                <label for="pc_copy_${pc.nombre}">${pc.nombre}</label>
+                            </div>
+                        `;
+                    }
+                });
+
+                actionList.innerHTML = actionHtml || '<div>No hay PCs online.</div>';
+                copyList.innerHTML = copyHtml || '<div>No hay PCs online.</div>';
+            }
+
+            // Mostrar advertencias
+            if (data.type === 'warning_update') {
+                const warningList = document.getElementById('warning-list');
+                const warningItem = document.createElement('p');
+                warningItem.className = 'warning';
+                warningItem.textContent = data.warning;
+                warningList.appendChild(warningItem);
+
+                setTimeout(() => {
+                    warningList.removeChild(warningItem);
+                }, 5000);
+            }
+        };
+
+        socket.onclose = function(event) {
+            console.error('WebSocket cerrado:', event);
+        };
+
         // Seleccionar todos para el formulario de acciones
         function toggleSelectAll() {
             var selectAllCheckbox = document.getElementById('select_all');
@@ -159,7 +252,7 @@
 
         // Manejo asíncrono del formulario de copia de archivos
         document.getElementById('copy-file-form').addEventListener('submit', function(event) {
-            event.preventDefault(); // Evitar el envío síncrono del formulario
+            event.preventDefault();
 
             const selectedPCs = Array.from(document.querySelectorAll('input[name="selected_pcs"]:checked')).map(input => input.value);
             if (selectedPCs.length === 0) {
@@ -167,33 +260,30 @@
                 return;
             }
 
-            // Mostrar el spinner para copiar archivo
             document.getElementById('copy-progress').style.display = 'block';
             document.getElementById('copy-results').innerHTML = '';
 
-            // Enviar el formulario usando AJAX
             const formData = new FormData(this);
             fetch(this.action, {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest' // Indicar que es una solicitud AJAX
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
             })
             .then(response => response.json())
             .then(data => {
                 if (data.task_id) {
-                    // Iniciar el polling para verificar el estado de la tarea
                     checkTaskStatus(data.task_id, 'copy');
                 } else {
                     document.getElementById('copy-progress').style.display = 'none';
-                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: ' + (data.error || 'No se pudo iniciar la tarea de copia.') + '</p>';
+                    document.getElementById('copy-results').innerHTML = '<p class="error">Error: ' + (data.error || 'No se pudo iniciar la tarea de copia.') + '</p>';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('copy-progress').style.display = 'none';
-                document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al iniciar la copia de archivos.</p>';
+                document.getElementById('copy-results').innerHTML = '<p class="error">Error al iniciar la copia de archivos.</p>';
             });
         });
 
@@ -205,12 +295,10 @@
                 return;
             }
 
-            // Confirmar la acción
             if (!confirm(`¿Está seguro de que desea apagar ${selectedPCs.length} PC(s)? Esto puede interrumpir cualquier trabajo en curso.`)) {
                 return;
             }
 
-            // Mostrar el spinner para acciones
             document.getElementById('action-progress').style.display = 'block';
 
             const params = new URLSearchParams();
@@ -232,13 +320,13 @@
                     checkTaskStatus(data.task_id, 'action');
                 } else {
                     document.getElementById('action-progress').style.display = 'none';
-                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: ' + (data.error || 'No se pudo iniciar la tarea de apagado.') + '</p>';
+                    document.getElementById('copy-results').innerHTML = '<p class="error">Error: ' + (data.error || 'No se pudo iniciar la tarea de apagado.') + '</p>';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('action-progress').style.display = 'none';
-                document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al iniciar el apagado de los PCs.</p>';
+                document.getElementById('copy-results').innerHTML = '<p class="error">Error al iniciar el apagado de los PCs.</p>';
             });
         }
 
@@ -250,12 +338,10 @@
                 return;
             }
 
-            // Confirmar la acción
             if (!confirm(`¿Está seguro de que desea reiniciar ${selectedPCs.length} PC(s)? Esto puede interrumpir cualquier trabajo en curso.`)) {
                 return;
             }
 
-            // Mostrar el spinner para acciones
             document.getElementById('action-progress').style.display = 'block';
 
             const params = new URLSearchParams();
@@ -277,13 +363,13 @@
                     checkTaskStatus(data.task_id, 'action');
                 } else {
                     document.getElementById('action-progress').style.display = 'none';
-                    document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error: ' + (data.error || 'No se pudo iniciar la tarea de reinicio.') + '</p>';
+                    document.getElementById('copy-results').innerHTML = '<p class="error">Error: ' + (data.error || 'No se pudo iniciar la tarea de reinicio.') + '</p>';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('action-progress').style.display = 'none';
-                document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al iniciar el reinicio de los PCs.</p>';
+                document.getElementById('copy-results').innerHTML = '<p class="error">Error al iniciar el reinicio de los PCs.</p>';
             });
         }
 
@@ -299,14 +385,41 @@
                 return;
             }
 
-            // Mostrar el spinner para acciones
             document.getElementById('action-progress').style.display = 'block';
 
-            // Establecer el valor del campo oculto para indicar que es una acción de escritorio remoto
-            document.getElementById('remote_desktop_input').value = 'true';
+            const params = new URLSearchParams();
+            selectedPCs.forEach(pc => params.append('selected_pcs', pc));
+            params.append('remote_desktop', 'true');
+            params.append('csrfmiddlewaretoken', getCsrfToken());
 
-            // Enviar el formulario de manera síncrona
-            document.getElementById('action-form').submit();
+            fetch('/control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: params
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la solicitud al servidor: ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                // Redirigir para que se ejecute el bloque trigger_rdp
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('action-progress').style.display = 'none';
+                document.getElementById('copy-results').innerHTML = '<p class="error">Error al iniciar la sesión de Escritorio Remoto: ' + error.message + '</p>';
+            });
         }
 
         // Función para verificar el estado de las tareas
@@ -316,11 +429,9 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'pending') {
-                            // La tarea sigue en curso, continuar verificando
                             return;
                         }
 
-                        // La tarea ha terminado (éxito o error)
                         clearInterval(interval);
                         if (type === 'copy') {
                             document.getElementById('copy-progress').style.display = 'none';
@@ -329,18 +440,16 @@
                         }
 
                         if (data.status === 'success') {
-                            // Mostrar los resultados
-                            let resultsHtml = '<p style="color: green;">Tarea completada:</p><ul>';
+                            let resultsHtml = '<p class="success">Tarea completada:</p><ul>';
                             data.results.forEach(result => {
-                                const statusColor = result.status === 'success' ? 'green' : 'red';
-                                resultsHtml += `<li style="color: ${statusColor};">${result.pc}: ${result.message}</li>`;
+                                const statusClass = result.status === 'success' ? 'success' : 'error';
+                                resultsHtml += `<li class="${statusClass}">${result.pc}: ${result.message}</li>`;
                             });
                             resultsHtml += '</ul>';
                             document.getElementById('copy-results').innerHTML = resultsHtml;
-                            // Recargar la página para actualizar la lista de PCs
                             setTimeout(() => location.reload(), 2000);
                         } else {
-                            document.getElementById('copy-results').innerHTML = `<p style="color: red;">${data.message}</p>`;
+                            document.getElementById('copy-results').innerHTML = `<p class="error">${data.message}</p>`;
                         }
                     })
                     .catch(error => {
@@ -351,65 +460,13 @@
                         } else {
                             document.getElementById('action-progress').style.display = 'none';
                         }
-                        document.getElementById('copy-results').innerHTML = '<p style="color: red;">Error al verificar el estado de la tarea.</p>';
+                        document.getElementById('copy-results').innerHTML = '<p class="error">Error al verificar el estado de la tarea.</p>';
                     });
-            }, 2000); // Verificar cada 2 segundos
+            }, 2000);
         }
+
+        // Ejecutar toggleFileSource al cargar la página para asegurar el estado inicial
+        toggleFileSource();
     </script>
-
-    <!-- Estilos CSS -->
-    <style>
-        .pc-selector {
-            margin-top: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            width: 300px;
-            position: relative;
-            left: 0px;
-            top: 0px;
-        }
-
-        .pc-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-
-        .pc-item input[type="checkbox"] {
-            margin-right: 8px;
-        }
-
-        .select-all-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .select-all-item input[type="checkbox"] {
-            margin-right: 8px;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        #action-progress, #copy-progress {
-            font-weight: bold;
-            color: #3498db;
-        }
-    </style>
 </div>
 {% endblock %}

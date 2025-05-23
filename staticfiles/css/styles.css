@@ -1,0 +1,325 @@
+body {
+    font-family: 'Open Sans', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+header {
+    background-color: #003087;
+    color: white;
+    padding: 1rem;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+nav .menu {
+    display: flex;
+    gap: 1rem;
+}
+
+nav .menu a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+}
+
+nav .menu a:hover {
+    background-color: #002a6e;
+    border-radius: 4px;
+}
+
+nav .submenu {
+    position: absolute;
+    background-color: #003087;
+    display: none;
+    min-width: 150px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+nav .menu > a:hover .submenu {
+    display: block;
+}
+
+nav .submenu a {
+    display: block;
+    padding: 0.5rem 1rem;
+}
+
+nav .submenu a:hover {
+    background-color: #002a6e;
+}
+
+main {
+    margin-top: 80px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 2rem;
+    display: flex;
+    gap: 2rem;
+}
+
+.content {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+}
+
+.content h1 {
+    color: #003087;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    grid-column: 1 / -1; /* Ocupa toda la fila */
+}
+
+.content h2 {
+    color: #003087;
+    font-size: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.content p {
+    line-height: 1.6;
+    color: #555;
+}
+
+.image-section img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.button {
+    display: inline-block;
+    background-color: #003087;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    text-decoration: none;
+    border: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+    cursor: pointer;
+    margin-right: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.button:hover {
+    background-color: #002a6e;
+}
+
+form {
+    margin: 1rem 0;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="file"],
+select {
+    padding: 0.5rem;
+    width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+}
+
+label {
+    display: block;
+    margin-top: 1rem;
+    font-weight: bold;
+    color: #333;
+}
+
+pre {
+    background-color: #fff;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Estilos para la cuadrícula de PCs (index.html) */
+.grid-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.grid-column {
+    width: 22%;
+}
+
+/* Estilos para ítems de PC (usados en index.html y control.html) */
+.pc-item {
+    display: flex;
+    align-items: center;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.pc-item:hover {
+    transform: translateY(-2px);
+}
+
+.pc-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.pc-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+    color: #003087;
+}
+
+.pc-status {
+    margin: 0;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+/* Estilos para el selector de PCs (control.html) */
+.pc-selector {
+    margin-top: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: #fafafa;
+}
+
+/* Estilo para "Seleccionar todos" (control.html) */
+.select-all-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 0.5rem;
+    background-color: #e9ecef;
+    border-radius: 4px;
+}
+
+.select-all-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Estilo para el spinner (control.html) */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilo para los contenedores de progreso (control.html) */
+.action-progress {
+    display: none;
+    margin-top: 10px;
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Estilo para los resultados (control.html) */
+.copy-results {
+    margin-top: 10px;
+    padding: 1rem;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Estilo para la sección de archivos del servidor (control.html) */
+.server-file-div {
+    display: none;
+}
+
+/* Estilos para estados (usados en index.html y control.html) */
+.content .grid-container .grid-column .pc-item .pc-status.status-online {
+    color: green;
+}
+
+.content .grid-container .grid-column .pc-item .pc-status.status-offline {
+    color: red;
+}
+
+.content .grid-container .grid-column .pc-item .pc-status.status-unknown {
+    color: gray;
+}
+
+.content .grid-container .grid-column .pc-item .pc-icon.status-online {
+    color: green;
+}
+
+.content .pc-selector .pc-item .pc-icon.status-online {
+    color: green;
+}
+
+/* Estilos para mensajes de éxito y error (control.html) */
+.success {
+    color: green;
+}
+
+.error {
+    color: red;
+}
+
+/* Estilos para advertencias (control.html) */
+.warning-section {
+    grid-column: 1 / -1; /* Ocupa toda la fila */
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.warning-section h2 {
+    margin-top: 0;
+    color: #856404;
+}
+
+.warning {
+    color: #856404;
+    font-weight: bold;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background-color: #ffedcc;
+    border-radius: 4px;
+}
+
+/* Estilos para secciones (control.html) */
+.action-section, .copy-section, .result-section {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}

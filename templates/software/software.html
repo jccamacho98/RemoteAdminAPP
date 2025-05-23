@@ -8,11 +8,40 @@
 <form method="post" enctype="multipart/form-data" id="install-form">
     {% csrf_token %}
     <div style="margin-bottom: 15px;">
-        <label for="installer_file">Seleccionar instalador:</label><br>
-        <input type="file" id="installer_file" name="installer_file" accept=".exe,.msi" required>
+        <h3>Fuente del archivo:</h3>
+        <div style="display: flex; align-items: center; gap: 5px;">
+            <input type="radio" id="source_upload" name="source_type" value="upload" checked onchange="updateSourceSelection()">
+            <label for="source_upload">Subir archivo</label>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+            <input type="radio" id="source_server" name="source_type" value="server" onchange="updateSourceSelection()">
+            <label for="source_server">Seleccionar desde el servidor</label>
+        </div>
     </div>
 
-    <div style="margin-bottom: 15px;">
+    <div style="margin-bottom: 15px;" id="upload_file_section">
+        <label for="installer_file">Seleccionar instalador:</label><br>
+        <input type="file" id="installer_file" name="installer_file" accept=".exe,.msi">
+    </div>
+
+    <div style="margin-bottom: 15px; display: none;" id="server_file_section">
+        <label for="server_file">Seleccionar instalador desde el servidor:</label><br>
+        <select id="server_file" name="server_file">
+            <option value="">-- Seleccione un archivo --</option>
+            <optgroup label="Instalación desatendida" id="unattended_files">
+                {% for file in unattended_software_files %}
+                <option value="{{ file }}">{{ file }}</option>
+                {% endfor %}
+            </optgroup>
+            <optgroup label="Instalación atendida" id="attended_files">
+                {% for file in attended_software_files %}
+                <option value="{{ file }}">{{ file }}</option>
+                {% endfor %}
+            </optgroup>
+        </select>
+    </div>
+
+    <div style="margin-bottom: 15px;" id="install_type_section">
         <h3>Tipo de instalación:</h3>
         <div style="display: flex; align-items: center; gap: 5px;">
             <input type="radio" id="unattended" name="install_type" value="unattended" checked>
@@ -61,7 +90,7 @@
     <p>Para continuar con la instalación interactiva en {{ rdp_pc_name }}, debes iniciar una sesión de Escritorio Remoto.</p>
     <p>El instalador está listo en: <strong>{{ installer_path }}</strong></p>
     <p>¿Deseas iniciar una sesión de Escritorio Remoto en {{ rdp_pc_name }} ahora?</p>
-    <form method="post">
+    <form method="post" id="rdp-form">
         {% csrf_token %}
         <input type="hidden" name="pc_name" value="{{ rdp_pc_name }}">
         <button type="submit" name="start_rdp">Sí</button>
@@ -70,7 +99,21 @@
 </div>
 {% endif %}
 
-<!-- JavaScript para manejar la selección de PCs y la validación -->
+<!-- Script para disparar RDP -->
+{% if trigger_rdp and request.session.rdp_triggered %}
+<script>
+    fetch(`http://localhost:8080/trigger_rdp/{{ trigger_rdp }}`)
+        .then(response => response.text())
+        .then(data => {
+            console.log(data);
+        })
+        .catch(error => {
+            console.error('Error al disparar RDP:', error);
+        });
+</script>
+{% endif %}
+
+<!-- JavaScript para manejar la selección de PCs, fuente y la validación -->
 <script>
 function toggleSelectAll() {
     var selectAllCheckbox = document.getElementById('select_all');
@@ -81,16 +124,46 @@ function toggleSelectAll() {
     updateAttendedWarning();
 }
 
+function updateSourceSelection() {
+    const sourceUpload = document.getElementById('source_upload');
+    const uploadSection = document.getElementById('upload_file_section');
+    const serverSection = document.getElementById('server_file_section');
+    const installTypeSection = document.getElementById('install_type_section');
+    const installerFileInput = document.getElementById('installer_file');
+    const serverFileSelect = document.getElementById('server_file');
+
+    if (sourceUpload.checked) {
+        uploadSection.style.display = 'block';
+        serverSection.style.display = 'none';
+        installTypeSection.style.display = 'block';
+        installerFileInput.setAttribute('required', 'required');
+        serverFileSelect.removeAttribute('required');
+    } else {
+        uploadSection.style.display = 'none';
+        serverSection.style.display = 'block';
+        installTypeSection.style.display = 'none';
+        installerFileInput.removeAttribute('required');
+        serverFileSelect.setAttribute('required', 'required');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     const installForm = document.getElementById('install-form');
     const installTypeAttended = document.getElementById('attended');
     const installTypeUnattended = document.getElementById('unattended');
     const pcCheckboxes = document.getElementsByClassName('pc-checkbox');
     const attendedWarning = document.getElementById('attended-warning');
+    const sourceUpload = document.getElementById('source_upload');
+    const sourceServer = document.getElementById('source_server');
+    const installerFileInput = document.getElementById('installer_file');
+    const serverFileSelect = document.getElementById('server_file');
+
+    // Inicializar la visibilidad de las secciones
+    updateSourceSelection();
 
     // Función para actualizar la advertencia de instalación interactiva
     function updateAttendedWarning() {
-        if (installTypeAttended.checked) {
+        if (installTypeAttended.checked && sourceUpload.checked) {
             const selectedCount = Array.from(pcCheckboxes).filter(cb => cb.checked).length;
             if (selectedCount > 1) {
                 attendedWarning.style.display = 'block';
@@ -114,19 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Escuchar cambios en el tipo de instalación
-    installTypeAttended.addEventListener('change', function () {
-        updateAttendedWarning();
-        // Si se selecciona instalación interactiva, deseleccionar todos los checkboxes excepto el primero
-        if (this.checked) {
-            const selectedCheckboxes = Array.from(pcCheckboxes).filter(cb => cb.checked);
-            if (selectedCheckboxes.length > 1) {
-                for (let i = 1; i < selectedCheckboxes.length; i++) {
-                    selectedCheckboxes[i].checked = false;
-                }
-            }
-        }
-    });
-
+    installTypeAttended.addEventListener('change', updateAttendedWarning);
     installTypeUnattended.addEventListener('change', updateAttendedWarning);
 
     // Escuchar cambios en los checkboxes de PCs
@@ -146,9 +207,27 @@ document.addEventListener('DOMContentLoaded', function () {
             if (selectedCount === 0) {
                 event.preventDefault();
                 alert('Por favor, seleccione al menos un PC antes de realizar esta acción.');
-            } else if (installTypeAttended.checked && selectedCount > 1) {
+                return;
+            }
+
+            if (installTypeAttended.checked && sourceUpload.checked && selectedCount > 1) {
                 event.preventDefault();
                 alert('La instalación interactiva solo permite seleccionar un PC a la vez.');
+                return;
+            }
+
+            if (sourceUpload.checked) {
+                if (!installerFileInput.files.length) {
+                    event.preventDefault();
+                    alert('Por favor, seleccione un archivo instalador.');
+                    return;
+                }
+            } else {
+                if (!serverFileSelect.value) {
+                    event.preventDefault();
+                    alert('Por favor, seleccione un archivo del servidor.');
+                    return;
+                }
             }
         });
     }
@@ -187,6 +266,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     .select-all-item input[type="checkbox"] {
         margin-right: 8px; /* Espacio entre el checkbox y la etiqueta "Seleccionar todos" */
+    }
+
+    #server_file {
+        width: 300px;
+        padding: 5px;
     }
 </style>
 {% endblock %}
